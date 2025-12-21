@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Exclude UWF_UNWRITTEN_FIELD for model classes populated by Gson deserialization -->
+    <Match>
+        <Package name="com.vaultsandbox.client.model"/>
+        <Bug pattern="UWF_UNWRITTEN_FIELD"/>
+    </Match>
+
+    <!-- Exclude UWF for EncryptedPayload fields (deserialized by Gson) -->
+    <Match>
+        <Class name="com.vaultsandbox.client.model.EncryptedPayload"/>
+        <Bug pattern="UWF_UNWRITTEN_FIELD"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP for model classes - these are data transfer objects -->
+    <Match>
+        <Package name="com.vaultsandbox.client.model"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP for crypto classes - internal implementation detail -->
+    <Match>
+        <Package name="com.vaultsandbox.client.crypto"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP for Email class - returns data from model -->
+    <Match>
+        <Class name="com.vaultsandbox.client.Email"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude strategy classes - internal implementation -->
+    <Match>
+        <Package name="com.vaultsandbox.client.strategy"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2,VO_VOLATILE_INCREMENT"/>
+    </Match>
+
+    <!-- Exclude potential null handling in http layer - responses checked before call -->
+    <Match>
+        <Package name="com.vaultsandbox.client.http"/>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+    </Match>
+
+    <!-- Test classes - DMI_RANDOM_USED_ONLY_ONCE is acceptable for crypto tests -->
+    <Match>
+        <Class name="~.*Test"/>
+        <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE"/>
+    </Match>
+
+    <!-- Test classes - DM_DEFAULT_ENCODING is acceptable in tests with known ASCII content -->
+    <Match>
+        <Class name="~.*Test"/>
+        <Bug pattern="DM_DEFAULT_ENCODING"/>
+    </Match>
+
+    <!-- Test classes - DM_NEXTINT_VIA_NEXTDOUBLE is acceptable in integration tests -->
+    <Match>
+        <Class name="~.*IT"/>
+        <Bug pattern="DM_NEXTINT_VIA_NEXTDOUBLE"/>
+    </Match>
+
+    <!-- Test classes - URF_UNREAD_FIELD is acceptable (Gson field populated but test only validates presence) -->
+    <Match>
+        <Class name="~.*Test"/>
+        <Bug pattern="URF_UNREAD_FIELD"/>
+    </Match>
+
+    <!-- Test classes - DLS_DEAD_LOCAL_STORE is acceptable (setup variables) -->
+    <Match>
+        <Class name="~.*Test"/>
+        <Bug pattern="DLS_DEAD_LOCAL_STORE"/>
+    </Match>
+
+    <!-- Test classes - REC_CATCH_EXCEPTION is acceptable for test teardown -->
+    <Match>
+        <Class name="~.*Test|~.*IT"/>
+        <Bug pattern="REC_CATCH_EXCEPTION"/>
+    </Match>
+
+    <!-- Test helper classes -->
+    <Match>
+        <Class name="com.vaultsandbox.client.SmtpTestHelper"/>
+        <Bug pattern="REC_CATCH_EXCEPTION"/>
+    </Match>
+</FindBugsFilter>

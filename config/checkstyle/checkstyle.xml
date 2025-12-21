@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+    Checkstyle configuration based on Google Java Style Guide.
+    https://google.github.io/styleguide/javaguide.html
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="warning"/>
+    <property name="fileExtensions" value="java"/>
+
+    <!-- File length -->
+    <module name="FileLength">
+        <property name="max" value="2000"/>
+    </module>
+
+    <!-- No trailing whitespace -->
+    <module name="RegexpSingleline">
+        <property name="format" value="\s+$"/>
+        <property name="message" value="Line has trailing whitespace."/>
+    </module>
+
+    <!-- Newline at end of file -->
+    <module name="NewlineAtEndOfFile"/>
+
+    <!-- Line length (must be under Checker, not TreeWalker) -->
+    <module name="LineLength">
+        <property name="max" value="120"/>
+        <property name="ignorePattern" value="^package.*|^import.*|a]+ href|href|http://|https://|ftp://"/>
+    </module>
+
+    <module name="TreeWalker">
+        <!-- Naming conventions -->
+        <module name="ConstantName">
+            <!-- Allow lowercase 'log' or 'logger' for SLF4J convention -->
+            <property name="format" value="^([A-Z][A-Z0-9]*(_[A-Z0-9]+)*|log(ger)?)$"/>
+        </module>
+        <module name="LocalFinalVariableName"/>
+        <module name="LocalVariableName"/>
+        <module name="MemberName"/>
+        <module name="MethodName"/>
+        <module name="PackageName"/>
+        <module name="ParameterName"/>
+        <module name="StaticVariableName"/>
+        <module name="TypeName"/>
+
+        <!-- Imports -->
+        <module name="AvoidStarImport"/>
+        <module name="IllegalImport"/>
+        <module name="RedundantImport"/>
+        <module name="UnusedImports"/>
+        <module name="MethodLength">
+            <property name="max" value="150"/>
+        </module>
+        <module name="ParameterNumber">
+            <property name="max" value="8"/>
+        </module>
+
+        <!-- Whitespace -->
+        <module name="EmptyForIteratorPad"/>
+        <module name="GenericWhitespace"/>
+        <module name="MethodParamPad"/>
+        <module name="NoWhitespaceAfter"/>
+        <module name="NoWhitespaceBefore"/>
+        <module name="ParenPad"/>
+        <module name="TypecastParenPad"/>
+        <module name="WhitespaceAfter"/>
+        <module name="WhitespaceAround">
+            <property name="allowEmptyConstructors" value="true"/>
+            <property name="allowEmptyMethods" value="true"/>
+            <property name="allowEmptyTypes" value="true"/>
+            <property name="allowEmptyLoops" value="true"/>
+            <property name="allowEmptyLambdas" value="true"/>
+        </module>
+
+        <!-- Modifiers -->
+        <module name="ModifierOrder"/>
+        <module name="RedundantModifier"/>
+
+        <!-- Blocks -->
+        <module name="AvoidNestedBlocks"/>
+        <module name="EmptyBlock"/>
+        <module name="LeftCurly"/>
+        <module name="NeedBraces"/>
+        <module name="RightCurly"/>
+
+        <!-- Coding -->
+        <module name="EmptyStatement"/>
+        <module name="EqualsHashCode"/>
+        <module name="IllegalInstantiation"/>
+        <module name="InnerAssignment"/>
+        <module name="MissingSwitchDefault"/>
+        <module name="MultipleVariableDeclarations"/>
+        <module name="SimplifyBooleanExpression"/>
+        <module name="SimplifyBooleanReturn"/>
+
+        <!-- Design -->
+        <module name="FinalClass"/>
+        <module name="HideUtilityClassConstructor"/>
+        <module name="InterfaceIsType"/>
+
+        <!-- Miscellaneous -->
+        <module name="ArrayTypeStyle"/>
+        <module name="UpperEll"/>
+
+        <!-- Annotations -->
+        <module name="MissingOverride"/>
+    </module>
+</module>
