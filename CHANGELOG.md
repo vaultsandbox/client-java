@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.1] - 2025-12-29
+
+### Added
+
+- Full email authentication result fields: `ip`, `info` for SPF; `selector`, `info` for DKIM; `policy`, `aligned`, `info` for DMARC; `hostname`, `info` for Reverse DNS
+- `getStatus()` accessor methods on all auth result classes
+- `isAligned()` convenience method on `DmarcResult`
+- `isValid()` convenience method on `ReverseDnsResult`
+
 ## [0.5.0] - 2025-12-18
 
 ### Initial release

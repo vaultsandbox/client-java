@@ -1,6 +1,5 @@
 package com.vaultsandbox.client.model;
 
-import com.google.gson.annotations.SerializedName;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,8 +7,6 @@ public class AuthResults {
   private SpfResult spf;
   private List<DkimResult> dkim;
   private DmarcResult dmarc;
-
-  @SerializedName("reverse_dns")
   private ReverseDnsResult reverseDns;
 
   public AuthResults() {}
@@ -18,41 +15,50 @@ public class AuthResults {
     List<String> passed = new ArrayList<>();
     List<String> failed = new ArrayList<>();
 
-    // SPF
+    // SPF - pass is success, fail is failure, softfail/neutral/none/temperror/permerror are neutral
     if (spf != null) {
-      if ("pass".equalsIgnoreCase(spf.getResult())) {
+      String status = spf.getResult();
+      if ("pass".equalsIgnoreCase(status)) {
         passed.add("SPF");
-      } else {
-        failed.add("SPF: " + spf.getResult());
+      } else if ("fail".equalsIgnoreCase(status)) {
+        failed.add("SPF: " + status);
       }
+      // softfail, neutral, none, temperror, permerror are treated as neutral (not added to either
+      // list)
     }
 
-    // DKIM (any passing signature counts)
+    // DKIM (any passing signature counts) - none is neutral
     if (dkim != null && !dkim.isEmpty()) {
       boolean anyPass = dkim.stream().anyMatch(d -> "pass".equalsIgnoreCase(d.getResult()));
+      boolean anyFail = dkim.stream().anyMatch(d -> "fail".equalsIgnoreCase(d.getResult()));
       if (anyPass) {
         passed.add("DKIM");
-      } else {
-        failed.add("DKIM: " + dkim.get(0).getResult());
+      } else if (anyFail) {
+        failed.add("DKIM: fail");
       }
+      // If all are 'none', treat as neutral (not added to either list)
     }
 
-    // DMARC
+    // DMARC - pass is success, fail is failure, none is neutral
     if (dmarc != null) {
-      if ("pass".equalsIgnoreCase(dmarc.getResult())) {
+      String status = dmarc.getResult();
+      if ("pass".equalsIgnoreCase(status)) {
         passed.add("DMARC");
-      } else {
-        failed.add("DMARC: " + dmarc.getResult());
+      } else if ("fail".equalsIgnoreCase(status)) {
+        failed.add("DMARC: " + status);
       }
+      // 'none' is treated as neutral (not added to either list)
     }
 
-    // Reverse DNS
+    // Reverse DNS - pass is success, fail is failure, none is neutral
     if (reverseDns != null) {
-      if (reverseDns.isValid()) {
+      String status = reverseDns.getStatus();
+      if ("pass".equalsIgnoreCase(status)) {
         passed.add("ReverseDNS");
-      } else {
-        failed.add("ReverseDNS: invalid");
+      } else if ("fail".equalsIgnoreCase(status)) {
+        failed.add("ReverseDNS: " + status);
       }
+      // 'none' is treated as neutral (not added to either list)
     }
 
     return new AuthValidation(passed, failed);
