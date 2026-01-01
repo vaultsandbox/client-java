@@ -130,8 +130,7 @@ checkstyle {
 // SpotBugs configuration (bug detection)
 spotbugs {
     toolVersion = '4.8.6'
-    // Fail on CI, warn locally
-    ignoreFailures = !System.getenv('CI')?.toBoolean()
+    ignoreFailures = false
     excludeFilter = file("${rootDir}/config/spotbugs/exclude.xml")
 }
 

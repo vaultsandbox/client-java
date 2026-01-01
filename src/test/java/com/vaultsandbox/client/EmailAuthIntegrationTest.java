@@ -21,6 +21,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -112,8 +113,9 @@ final class EmailAuthIntegrationTest {
             .build();
 
     try (Response response = httpClient.newCall(request).execute()) {
+      ResponseBody responseBody = response.body();
       if (!response.isSuccessful()) {
-        String errorBody = response.body() != null ? response.body().string() : "";
+        String errorBody = responseBody != null ? responseBody.string() : "";
         if (response.code() == 404) {
           throw new IOException(
               "Test email API not available (404). Ensure server is running with VSB_DEVELOPMENT=true");
@@ -121,9 +123,12 @@ final class EmailAuthIntegrationTest {
         throw new IOException("Test email API failed: " + response.code() + " - " + errorBody);
       }
 
-      String responseBody = response.body().string();
+      if (responseBody == null) {
+        throw new IOException("Response body is null");
+      }
+      String responseBodyStr = responseBody.string();
       @SuppressWarnings("unchecked")
-      Map<String, String> result = GSON.fromJson(responseBody, Map.class);
+      Map<String, String> result = GSON.fromJson(responseBodyStr, Map.class);
       return result.get("emailId");
     }
   }
