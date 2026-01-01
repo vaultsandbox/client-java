@@ -242,13 +242,22 @@ public final class TestHelpers {
   public static AuthResults createPassingAuthResults() {
     String json =
         """
-                {
-                    "spf": {"status": "pass", "domain": "example.com", "ip": "192.0.2.1", "info": "sender SPF authorized"},
-                    "dkim": [{"status": "pass", "domain": "example.com", "selector": "default", "info": "signature verified"}],
-                    "dmarc": {"status": "pass", "domain": "example.com", "policy": "reject", "aligned": true, "info": "DMARC pass"},
-                    "reverseDns": {"status": "pass", "ip": "192.0.2.1", "hostname": "mail.example.com", "info": "forward-confirmed reverse DNS"}
-                }
-                """;
+        {
+          "spf": {
+            "result": "pass", "domain": "example.com",
+            "ip": "192.0.2.1", "details": "sender SPF authorized"
+          },
+          "dkim": [{
+            "result": "pass", "domain": "example.com",
+            "selector": "default", "signature": "dkim=pass (test)"
+          }],
+          "dmarc": {
+            "result": "pass", "domain": "example.com",
+            "policy": "reject", "aligned": true
+          },
+          "reverseDns": {"verified": true, "ip": "192.0.2.1", "hostname": "mail.example.com"}
+        }
+        """;
     return GSON.fromJson(json, AuthResults.class);
   }
 
@@ -257,10 +266,10 @@ public final class TestHelpers {
     String json =
         """
                 {
-                    "spf": {"status": "fail", "domain": "example.com", "ip": "192.0.2.1"},
-                    "dkim": [{"status": "pass", "domain": "example.com", "selector": "default"}],
-                    "dmarc": {"status": "pass", "domain": "example.com", "policy": "reject", "aligned": true},
-                    "reverseDns": {"status": "pass", "ip": "192.0.2.1", "hostname": "mail.example.com"}
+                    "spf": {"result": "fail", "domain": "example.com", "ip": "192.0.2.1"},
+                    "dkim": [{"result": "pass", "domain": "example.com", "selector": "default"}],
+                    "dmarc": {"result": "pass", "domain": "example.com", "policy": "reject", "aligned": true},
+                    "reverseDns": {"verified": true, "ip": "192.0.2.1", "hostname": "mail.example.com"}
                 }
                 """;
     return GSON.fromJson(json, AuthResults.class);
@@ -271,10 +280,10 @@ public final class TestHelpers {
     String json =
         """
                 {
-                    "spf": {"status": "pass", "domain": "example.com", "ip": "192.0.2.1"},
-                    "dkim": [{"status": "fail", "domain": "example.com", "selector": "default"}],
-                    "dmarc": {"status": "pass", "domain": "example.com", "policy": "reject", "aligned": true},
-                    "reverseDns": {"status": "pass", "ip": "192.0.2.1", "hostname": "mail.example.com"}
+                    "spf": {"result": "pass", "domain": "example.com", "ip": "192.0.2.1"},
+                    "dkim": [{"result": "fail", "domain": "example.com", "selector": "default"}],
+                    "dmarc": {"result": "pass", "domain": "example.com", "policy": "reject", "aligned": true},
+                    "reverseDns": {"verified": true, "ip": "192.0.2.1", "hostname": "mail.example.com"}
                 }
                 """;
     return GSON.fromJson(json, AuthResults.class);
@@ -285,10 +294,10 @@ public final class TestHelpers {
     String json =
         """
                 {
-                    "spf": {"status": "pass", "domain": "example.com", "ip": "192.0.2.1"},
-                    "dkim": [{"status": "pass", "domain": "example.com", "selector": "default"}],
-                    "dmarc": {"status": "fail", "domain": "example.com", "policy": "reject"},
-                    "reverseDns": {"status": "pass", "ip": "192.0.2.1", "hostname": "mail.example.com"}
+                    "spf": {"result": "pass", "domain": "example.com", "ip": "192.0.2.1"},
+                    "dkim": [{"result": "pass", "domain": "example.com", "selector": "default"}],
+                    "dmarc": {"result": "fail", "domain": "example.com", "policy": "reject"},
+                    "reverseDns": {"verified": true, "ip": "192.0.2.1", "hostname": "mail.example.com"}
                 }
                 """;
     return GSON.fromJson(json, AuthResults.class);
@@ -299,10 +308,10 @@ public final class TestHelpers {
     String json =
         """
                 {
-                    "spf": {"status": "pass", "domain": "example.com", "ip": "192.0.2.1"},
-                    "dkim": [{"status": "pass", "domain": "example.com", "selector": "default"}],
-                    "dmarc": {"status": "pass", "domain": "example.com", "policy": "reject", "aligned": true},
-                    "reverseDns": {"status": "fail", "ip": "192.0.2.1", "hostname": null}
+                    "spf": {"result": "pass", "domain": "example.com", "ip": "192.0.2.1"},
+                    "dkim": [{"result": "pass", "domain": "example.com", "selector": "default"}],
+                    "dmarc": {"result": "pass", "domain": "example.com", "policy": "reject", "aligned": true},
+                    "reverseDns": {"verified": false, "ip": "192.0.2.1", "hostname": null}
                 }
                 """;
     return GSON.fromJson(json, AuthResults.class);
@@ -318,10 +327,10 @@ public final class TestHelpers {
     String json =
         """
                 {
-                    "spf": {"status": "none", "domain": "example.com"},
-                    "dkim": [{"status": "none", "domain": "example.com", "selector": "default"}],
-                    "dmarc": {"status": "none", "domain": "example.com"},
-                    "reverseDns": {"status": "none", "ip": "192.0.2.1", "hostname": null}
+                    "spf": {"result": "none", "domain": "example.com"},
+                    "dkim": [{"result": "none", "domain": "example.com", "selector": "default"}],
+                    "dmarc": {"result": "none", "domain": "example.com"},
+                    "reverseDns": {"verified": false, "ip": "192.0.2.1", "hostname": null}
                 }
                 """;
     return GSON.fromJson(json, AuthResults.class);
@@ -332,10 +341,10 @@ public final class TestHelpers {
     String json =
         """
                 {
-                    "spf": {"status": "softfail", "domain": "example.com", "ip": "192.0.2.1"},
-                    "dkim": [{"status": "pass", "domain": "example.com", "selector": "default"}],
-                    "dmarc": {"status": "pass", "domain": "example.com", "policy": "reject", "aligned": true},
-                    "reverseDns": {"status": "pass", "ip": "192.0.2.1", "hostname": "mail.example.com"}
+                    "spf": {"result": "softfail", "domain": "example.com", "ip": "192.0.2.1"},
+                    "dkim": [{"result": "pass", "domain": "example.com", "selector": "default"}],
+                    "dmarc": {"result": "pass", "domain": "example.com", "policy": "reject", "aligned": true},
+                    "reverseDns": {"verified": true, "ip": "192.0.2.1", "hostname": "mail.example.com"}
                 }
                 """;
     return GSON.fromJson(json, AuthResults.class);

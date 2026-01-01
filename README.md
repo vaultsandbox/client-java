@@ -44,7 +44,7 @@ Stop mocking your email stack. If your app sends real emails in production, it m
 
 ```groovy
 dependencies {
-    testImplementation 'com.vaultsandbox:client:0.5.1'
+    testImplementation 'com.vaultsandbox:client:0.5.2'
 }
 ```
 
@@ -54,7 +54,7 @@ dependencies {
 <dependency>
     <groupId>com.vaultsandbox</groupId>
     <artifactId>client</artifactId>
-    <version>0.5.1</version>
+    <version>0.5.2</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -145,13 +145,13 @@ if (!validation.isPassed()) {
 // Or check individual results
 var authResults = email.getAuthResults();
 if (authResults.getSpf() != null) {
-    System.out.println("SPF status: " + authResults.getSpf().getStatus());
+    System.out.println("SPF result: " + authResults.getSpf().getResult());
 }
 if (authResults.getDkim() != null) {
     System.out.println("DKIM signatures: " + authResults.getDkim().size());
 }
 if (authResults.getDmarc() != null) {
-    System.out.println("DMARC status: " + authResults.getDmarc().getStatus());
+    System.out.println("DMARC result: " + authResults.getDmarc().getResult());
 }
 ```
 

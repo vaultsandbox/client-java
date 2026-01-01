@@ -171,17 +171,21 @@ class AuthResultsTest {
     AuthValidation validation = results.validate();
 
     // "none" status means the check was not performed or not applicable
-    // Should be treated as neutral (not passed, not failed)
+    // Should be treated as neutral (not passed, not failed) for SPF/DKIM/DMARC
     assertFalse(validation.isFullyAuthenticated(), "None status should not pass");
     assertFalse(validation.hasSpf(), "SPF with 'none' result should not count as passed");
     assertFalse(validation.hasDkim(), "DKIM with 'none' result should not count as passed");
     assertFalse(validation.hasDmarc(), "DMARC with 'none' result should not count as passed");
-    assertFalse(validation.hasReverseDns(), "ReverseDNS with 'none' status should not pass");
+    // ReverseDNS now uses boolean verified - false means not verified (failed)
+    assertFalse(validation.hasReverseDns(), "ReverseDNS not verified should not pass");
 
-    // None status should NOT be in the failed list either (it's neutral)
+    // SPF/DKIM/DMARC none status should NOT be in the failed list (it's neutral)
+    // But ReverseDNS verified=false will be in failed list
     assertTrue(validation.getPassed().isEmpty(), "None status should not be in passed list");
     assertTrue(
-        validation.getFailed().isEmpty(), "None status should not be in failed list (neutral)");
+        validation.getFailed().stream().anyMatch(s -> s.contains("ReverseDNS")),
+        "ReverseDNS not verified should be in failed list");
+    assertEquals(1, validation.getFailed().size(), "Only ReverseDNS should be in failed list");
   }
 
   // ==================== Getter Tests ====================
@@ -220,45 +224,46 @@ class AuthResultsTest {
     AuthResults results = TestHelpers.createPassingAuthResults();
 
     assertNotNull(results.getReverseDns());
-    assertTrue(results.getReverseDns().isValid());
-    assertEquals("pass", results.getReverseDns().getStatus());
+    assertTrue(results.getReverseDns().isVerified());
     assertEquals("mail.example.com", results.getReverseDns().getHostname());
     assertEquals("192.0.2.1", results.getReverseDns().getIp());
-    assertEquals("forward-confirmed reverse DNS", results.getReverseDns().getInfo());
   }
 
-  // ==================== New Field Tests ====================
+  // ==================== Field Tests ====================
 
   @Test
-  void testSpfNewFields() {
+  void testSpfFields() {
     AuthResults results = TestHelpers.createPassingAuthResults();
 
     assertNotNull(results.getSpf());
+    assertEquals("pass", results.getSpf().getResult());
     assertEquals("192.0.2.1", results.getSpf().getIp());
-    assertEquals("sender SPF authorized", results.getSpf().getInfo());
-    assertEquals("pass", results.getSpf().getStatus()); // Test getStatus() alias
+    assertEquals("example.com", results.getSpf().getDomain());
+    assertEquals("sender SPF authorized", results.getSpf().getDetails());
   }
 
   @Test
-  void testDkimNewFields() {
+  void testDkimFields() {
     AuthResults results = TestHelpers.createPassingAuthResults();
 
     assertNotNull(results.getDkim());
     assertFalse(results.getDkim().isEmpty());
-    assertEquals("signature verified", results.getDkim().get(0).getInfo());
-    assertEquals("pass", results.getDkim().get(0).getStatus()); // Test getStatus() alias
+    assertEquals("pass", results.getDkim().get(0).getResult());
+    assertEquals("example.com", results.getDkim().get(0).getDomain());
+    assertEquals("default", results.getDkim().get(0).getSelector());
+    assertEquals("dkim=pass (test)", results.getDkim().get(0).getSignature());
   }
 
   @Test
-  void testDmarcNewFields() {
+  void testDmarcFields() {
     AuthResults results = TestHelpers.createPassingAuthResults();
 
     assertNotNull(results.getDmarc());
+    assertEquals("pass", results.getDmarc().getResult());
     assertEquals("reject", results.getDmarc().getPolicy());
     assertTrue(results.getDmarc().isAligned());
     assertEquals(Boolean.TRUE, results.getDmarc().getAligned());
-    assertEquals("DMARC pass", results.getDmarc().getInfo());
-    assertEquals("pass", results.getDmarc().getStatus()); // Test getStatus() alias
+    assertEquals("example.com", results.getDmarc().getDomain());
   }
 
   // ==================== AuthValidation Tests ====================

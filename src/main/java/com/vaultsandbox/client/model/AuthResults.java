@@ -50,15 +50,13 @@ public class AuthResults {
       // 'none' is treated as neutral (not added to either list)
     }
 
-    // Reverse DNS - pass is success, fail is failure, none is neutral
+    // Reverse DNS - uses verified boolean
     if (reverseDns != null) {
-      String status = reverseDns.getStatus();
-      if ("pass".equalsIgnoreCase(status)) {
+      if (reverseDns.isVerified()) {
         passed.add("ReverseDNS");
-      } else if ("fail".equalsIgnoreCase(status)) {
-        failed.add("ReverseDNS: " + status);
+      } else {
+        failed.add("ReverseDNS: not verified");
       }
-      // 'none' is treated as neutral (not added to either list)
     }
 
     return new AuthValidation(passed, failed);

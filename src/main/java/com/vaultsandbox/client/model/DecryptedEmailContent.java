@@ -8,7 +8,6 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.google.gson.annotations.JsonAdapter;
-import com.google.gson.annotations.SerializedName;
 import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,7 +24,6 @@ public class DecryptedEmailContent {
   private List<AttachmentData> attachments;
   private List<String> links;
 
-  @SerializedName("auth_results")
   private AuthResults authResults;
 
   private Map<String, Object> metadata;

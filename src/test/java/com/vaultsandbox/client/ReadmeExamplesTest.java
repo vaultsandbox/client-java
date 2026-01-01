@@ -986,13 +986,13 @@ final class ReadmeExamplesTest {
     void testSpfResult() {
       // README Example:
       // if (authResults.getSpf() != null) {
-      //     System.out.println("SPF status: " + authResults.getSpf().getStatus());
+      //     System.out.println("SPF result: " + authResults.getSpf().getResult());
       // }
 
       AuthResults results = TestHelpers.createPassingAuthResults();
 
       assertNotNull(results.getSpf());
-      assertEquals("pass", results.getSpf().getStatus());
+      assertEquals("pass", results.getSpf().getResult());
       assertEquals("example.com", results.getSpf().getDomain());
     }
 
@@ -1017,13 +1017,13 @@ final class ReadmeExamplesTest {
     void testDmarcResult() {
       // README Example:
       // if (authResults.getDmarc() != null) {
-      //     System.out.println("DMARC status: " + authResults.getDmarc().getStatus());
+      //     System.out.println("DMARC result: " + authResults.getDmarc().getResult());
       // }
 
       AuthResults results = TestHelpers.createPassingAuthResults();
 
       assertNotNull(results.getDmarc());
-      assertEquals("pass", results.getDmarc().getStatus());
+      assertEquals("pass", results.getDmarc().getResult());
     }
 
     @Test
