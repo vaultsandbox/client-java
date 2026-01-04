@@ -13,6 +13,7 @@ import com.vaultsandbox.client.http.ApiClient;
 import com.vaultsandbox.client.model.DecryptedEmailContent;
 import com.vaultsandbox.client.model.DecryptedEmailMetadata;
 import com.vaultsandbox.client.model.EmailData;
+import com.vaultsandbox.client.model.EmailMetadata;
 import com.vaultsandbox.client.model.EncryptedPayload;
 import com.vaultsandbox.client.model.ExportedInbox;
 import com.vaultsandbox.client.model.InboxData;
@@ -106,16 +107,31 @@ public class Inbox {
   /**
    * Lists all emails in this inbox.
    *
-   * <p>Returns emails with metadata only (from, to, subject, receivedAt). To get the full content
-   * of an email including body and attachments, use {@link #getEmail(String)}.
+   * <p>Returns fully hydrated emails with complete content including body text, HTML, headers,
+   * attachments, links, and authentication results.
    *
    * @return a list of emails, ordered by received time (newest first)
    * @throws ApiException if the API request fails
    * @throws NetworkException if unable to connect to the server
    */
   public List<Email> listEmails() {
-    List<EmailData> emailsData = apiClient.listEmails(emailAddress);
+    List<EmailData> emailsData = apiClient.listEmails(emailAddress, true);
     return emailsData.stream().map(this::decryptEmail).collect(Collectors.toList());
+  }
+
+  /**
+   * Lists all emails in this inbox, returning only metadata (no body content).
+   *
+   * <p>This is more efficient than {@link #listEmails()} when you only need metadata like sender,
+   * subject, and received time.
+   *
+   * @return a list of email metadata, ordered by received time (newest first)
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
+   */
+  public List<EmailMetadata> listEmailsMetadataOnly() {
+    List<EmailData> emailsData = apiClient.listEmails(emailAddress, false);
+    return emailsData.stream().map(this::decryptToMetadata).collect(Collectors.toList());
   }
 
   /**
@@ -158,7 +174,7 @@ public class Inbox {
     // Otherwise, decrypt the encrypted raw content
     EncryptedPayload encryptedPayload = data.getEncryptedRaw();
     if (encryptedPayload != null) {
-      if (!signatureVerifier.verify(encryptedPayload)) {
+      if (!signatureVerifier.verify(encryptedPayload, serverSigPk)) {
         throw new SignatureVerificationException();
       }
       byte[] rawBytes = decryptor.decrypt(encryptedPayload, keypair.getSecretKey());
@@ -228,7 +244,7 @@ public class Inbox {
     DecryptedEmailMetadata metadata = null;
     EncryptedPayload metadataPayload = data.getEncryptedMetadata();
     if (metadataPayload != null) {
-      if (!signatureVerifier.verify(metadataPayload)) {
+      if (!signatureVerifier.verify(metadataPayload, serverSigPk)) {
         throw new SignatureVerificationException();
       }
       byte[] metadataBytes = decryptor.decrypt(metadataPayload, keypair.getSecretKey());
@@ -236,11 +252,11 @@ public class Inbox {
       metadata = gson.fromJson(metadataJson, DecryptedEmailMetadata.class);
     }
 
-    // Decrypt content (only present when fetching individual email)
+    // Decrypt content
     DecryptedEmailContent content = null;
     EncryptedPayload contentPayload = data.getEncryptedParsed();
     if (contentPayload != null) {
-      if (!signatureVerifier.verify(contentPayload)) {
+      if (!signatureVerifier.verify(contentPayload, serverSigPk)) {
         throw new SignatureVerificationException();
       }
       byte[] contentBytes = decryptor.decrypt(contentPayload, keypair.getSecretKey());
@@ -249,6 +265,26 @@ public class Inbox {
     }
 
     return new Email(data, metadata, content, this);
+  }
+
+  private EmailMetadata decryptToMetadata(EmailData data) {
+    DecryptedEmailMetadata metadata = null;
+    EncryptedPayload metadataPayload = data.getEncryptedMetadata();
+    if (metadataPayload != null) {
+      if (!signatureVerifier.verify(metadataPayload, serverSigPk)) {
+        throw new SignatureVerificationException();
+      }
+      byte[] metadataBytes = decryptor.decrypt(metadataPayload, keypair.getSecretKey());
+      String metadataJson = new String(metadataBytes, StandardCharsets.UTF_8);
+      metadata = gson.fromJson(metadataJson, DecryptedEmailMetadata.class);
+    }
+
+    return new EmailMetadata(
+        data.getId(),
+        metadata != null ? metadata.getFrom() : null,
+        metadata != null ? metadata.getSubject() : null,
+        metadata != null ? metadata.getReceivedAt() : data.getReceivedAt(),
+        data.isRead());
   }
 
   /**
@@ -305,17 +341,21 @@ public class Inbox {
    *
    * <p>This is equivalent to calling {@link VaultSandboxClient#exportInbox(Inbox)} with this inbox.
    *
+   * <p>Per VaultSandbox spec §9.4, the public key is NOT included in the export as it can be
+   * derived from the secret key.
+   *
    * @return the exported inbox data
    * @see VaultSandboxClient#importInbox(ExportedInbox)
    */
   public ExportedInbox export() {
     ExportedInbox exported = new ExportedInbox();
+    exported.setVersion(1);
     exported.setEmailAddress(emailAddress);
     exported.setExpiresAt(expiresAt.toString());
     exported.setInboxHash(inboxHash);
     exported.setServerSigPk(serverSigPk);
-    exported.setPublicKeyB64(Base64Url.encode(keypair.getPublicKey()));
-    exported.setSecretKeyB64(Base64Url.encode(keypair.getSecretKey()));
+    // Per spec §9.4: public key is NOT included (derived from secret key)
+    exported.setSecretKey(Base64Url.encode(keypair.getSecretKey()));
     exported.setExportedAt(Instant.now().toString());
     return exported;
   }

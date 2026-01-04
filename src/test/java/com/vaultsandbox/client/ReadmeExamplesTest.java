@@ -664,8 +664,9 @@ final class ReadmeExamplesTest {
 
       assertNotNull(exported);
       assertEquals(inbox.getEmailAddress(), exported.getEmailAddress());
-      assertNotNull(exported.getPublicKeyB64());
-      assertNotNull(exported.getSecretKeyB64());
+      // Per spec §9.4: public key is NOT included (derived from secret key)
+      assertNotNull(exported.getSecretKey());
+      assertNotNull(exported.derivePublicKey());
     }
 
     @Test
@@ -915,8 +916,9 @@ final class ReadmeExamplesTest {
         var exported = sharedClient.exportInbox(original);
         assertNotNull(exported);
         assertEquals(email, exported.getEmailAddress());
-        assertNotNull(exported.getPublicKeyB64());
-        assertNotNull(exported.getSecretKeyB64());
+        // Per spec §9.4: public key is NOT included (derived from secret key)
+        assertNotNull(exported.getSecretKey());
+        assertNotNull(exported.derivePublicKey());
         assertNotNull(exported.getExportedAt());
 
         // Import into a new client (simulating transfer to another process/machine)

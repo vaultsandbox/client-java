@@ -66,12 +66,14 @@ class ExportImportIT {
     ExportedInbox exported = client.exportInbox(inbox);
 
     assertNotNull(exported);
+    assertEquals(1, exported.getVersion());
     assertEquals(inbox.getEmailAddress(), exported.getEmailAddress());
     assertEquals(inbox.getExpiresAt().toString(), exported.getExpiresAt());
     assertEquals(inbox.getHash(), exported.getInboxHash());
     assertEquals(inbox.getServerSigPk(), exported.getServerSigPk());
-    assertNotNull(exported.getPublicKeyB64());
-    assertNotNull(exported.getSecretKeyB64());
+    // Per spec §9.4: public key is NOT included (derived from secret key)
+    assertNotNull(exported.getSecretKey());
+    assertNotNull(exported.derivePublicKey());
     assertNotNull(exported.getExportedAt());
 
     // Clean up
@@ -222,12 +224,12 @@ class ExportImportIT {
   @Order(8)
   void testImportWithExpiredInbox() {
     ExportedInbox expired = new ExportedInbox();
+    expired.setVersion(1);
     expired.setEmailAddress("test@example.com");
     expired.setExpiresAt(Instant.now().minus(Duration.ofHours(1)).toString());
     expired.setInboxHash("hash");
     expired.setServerSigPk("key");
-    expired.setPublicKeyB64("pk");
-    expired.setSecretKeyB64("sk");
+    expired.setSecretKey("sk");
 
     assertThrows(InvalidImportDataException.class, () -> client.importInbox(expired));
   }
@@ -258,8 +260,9 @@ class ExportImportIT {
 
       assertNotNull(exported);
       assertEquals(email, exported.getEmailAddress());
-      assertNotNull(exported.getPublicKeyB64());
-      assertNotNull(exported.getSecretKeyB64());
+      // Per spec §9.4: public key is NOT included (derived from secret key)
+      assertNotNull(exported.getSecretKey());
+      assertNotNull(exported.derivePublicKey());
     } finally {
       client.deleteInbox(email);
     }
@@ -355,13 +358,16 @@ class ExportImportIT {
       // Verify file is not empty
       assertFalse(content.isEmpty(), "Exported file should not be empty");
 
-      // Verify it's valid JSON by checking basic structure
+      // Verify it's valid JSON by checking basic structure per spec §9.2
       assertTrue(content.startsWith("{"), "Should be a JSON object");
       assertTrue(content.endsWith("}"), "Should end with closing brace");
+      assertTrue(content.contains("\"version\""), "Should contain version field");
       assertTrue(content.contains("\"emailAddress\""), "Should contain emailAddress field");
       assertTrue(content.contains("\"expiresAt\""), "Should contain expiresAt field");
-      assertTrue(content.contains("\"publicKeyB64\""), "Should contain publicKeyB64 field");
-      assertTrue(content.contains("\"secretKeyB64\""), "Should contain secretKeyB64 field");
+      // Per spec §9.4: publicKey is NOT included (derived from secretKey)
+      assertTrue(content.contains("\"secretKey\""), "Should contain secretKey field");
+      assertFalse(
+          content.contains("\"publicKeyB64\""), "Should NOT contain publicKeyB64 (per spec §9.4)");
       assertTrue(content.contains(inbox.getEmailAddress()), "Should contain actual email address");
     } finally {
       Files.deleteIfExists(tempFile);

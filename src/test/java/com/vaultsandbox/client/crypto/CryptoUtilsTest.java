@@ -83,7 +83,14 @@ class CryptoUtilsTest {
   @Test
   void testVerifySignatureSafeReturnsFalseOnInvalidPayload() {
     // verifySignatureSafe should return false instead of throwing
-    boolean result = CryptoUtils.verifySignatureSafe(null);
+    boolean result = CryptoUtils.verifySignatureSafe(null, null);
+    assertFalse(result);
+  }
+
+  @Test
+  void testVerifySignatureSafeReturnsFalseOnNullPinnedKey() {
+    // Even with null pinned key, should return false not throw
+    boolean result = CryptoUtils.verifySignatureSafe(null, "someKey");
     assertFalse(result);
   }
 }

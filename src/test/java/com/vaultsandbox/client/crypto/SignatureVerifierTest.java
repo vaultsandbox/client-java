@@ -27,6 +27,7 @@ class SignatureVerifierTest {
   private AsymmetricCipherKeyPair signingKeyPair;
   private byte[] rawPublicKey;
   private byte[] rawPrivateKey;
+  private String pinnedServerKey;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -43,27 +44,28 @@ class SignatureVerifierTest {
 
     rawPublicKey = pubParams.getEncoded();
     rawPrivateKey = privParams.getEncoded();
+    pinnedServerKey = Base64Url.encode(rawPublicKey);
   }
 
   @Test
   void testVerifyValidSignature() throws Exception {
     EncryptedPayload payload = createValidPayload();
 
-    assertTrue(signatureVerifier.verify(payload));
+    assertTrue(signatureVerifier.verify(payload, pinnedServerKey));
   }
 
   @Test
   void testVerifyOrThrowWithValidSignature() throws Exception {
     EncryptedPayload payload = createValidPayload();
 
-    assertDoesNotThrow(() -> signatureVerifier.verifyOrThrow(payload));
+    assertDoesNotThrow(() -> signatureVerifier.verifyOrThrow(payload, pinnedServerKey));
   }
 
   @Test
   void testVerifyInvalidSignature() throws Exception {
     EncryptedPayload payload = createPayloadWithInvalidSignature();
 
-    assertFalse(signatureVerifier.verify(payload));
+    assertFalse(signatureVerifier.verify(payload, pinnedServerKey));
   }
 
   @Test
@@ -71,7 +73,8 @@ class SignatureVerifierTest {
     EncryptedPayload payload = createPayloadWithInvalidSignature();
 
     assertThrows(
-        SignatureVerificationException.class, () -> signatureVerifier.verifyOrThrow(payload));
+        SignatureVerificationException.class,
+        () -> signatureVerifier.verifyOrThrow(payload, pinnedServerKey));
   }
 
   @Test
@@ -81,7 +84,7 @@ class SignatureVerifierTest {
     // Tamper with ciphertext
     EncryptedPayload tamperedPayload = createTamperedPayload(payload, "ciphertext");
 
-    assertFalse(signatureVerifier.verify(tamperedPayload));
+    assertFalse(signatureVerifier.verify(tamperedPayload, pinnedServerKey));
   }
 
   @Test
@@ -91,15 +94,25 @@ class SignatureVerifierTest {
     // Tamper with nonce
     EncryptedPayload tamperedPayload = createTamperedPayload(payload, "nonce");
 
-    assertFalse(signatureVerifier.verify(tamperedPayload));
+    assertFalse(signatureVerifier.verify(tamperedPayload, pinnedServerKey));
   }
 
   @Test
-  void testVerifyWithInvalidPublicKey() throws Exception {
-    // Create payload with mismatched public key
-    EncryptedPayload payload = createPayloadWithWrongKey();
+  void testVerifyWithServerKeyMismatch() throws Exception {
+    // Create valid payload but verify with different pinned key
+    EncryptedPayload payload = createValidPayload();
 
-    assertFalse(signatureVerifier.verify(payload));
+    // Generate a different keypair for pinned key
+    MLDSAKeyPairGenerator differentKeyGen = new MLDSAKeyPairGenerator();
+    differentKeyGen.init(
+        new MLDSAKeyGenerationParameters(new SecureRandom(), MLDSAParameters.ml_dsa_65));
+    AsymmetricCipherKeyPair differentKeyPair = differentKeyGen.generateKeyPair();
+    MLDSAPublicKeyParameters differentPubParams =
+        (MLDSAPublicKeyParameters) differentKeyPair.getPublic();
+    String differentPinnedKey = Base64Url.encode(differentPubParams.getEncoded());
+
+    // Should fail because pinned key doesn't match payload's server_sig_pk
+    assertThrows(Exception.class, () -> signatureVerifier.verify(payload, differentPinnedKey));
   }
 
   @Test
@@ -112,15 +125,34 @@ class SignatureVerifierTest {
     payload.nonce = Base64Url.encode(new byte[12]);
     payload.aad = Base64Url.encode("test".getBytes());
     payload.ciphertext = Base64Url.encode(new byte[32]);
-    payload.sig = Base64Url.encode(new byte[100]);
-    payload.serverSigPk = Base64Url.encode(new byte[100]); // Invalid key bytes
+    payload.sig = Base64Url.encode(new byte[3309]);
+    payload.serverSigPk = Base64Url.encode(new byte[100]); // Invalid key size
 
-    // With raw key API, invalid key size should either throw or return false
-    try {
-      assertFalse(signatureVerifier.verify(payload));
-    } catch (SignatureVerificationException e) {
-      // Also acceptable - some implementations throw for malformed keys
-    }
+    // Should throw because server_sig_pk size is invalid
+    assertThrows(Exception.class, () -> signatureVerifier.verify(payload, pinnedServerKey));
+  }
+
+  @Test
+  void testVerifyRejectsInvalidVersion() throws Exception {
+    TestEncryptedPayload payload = (TestEncryptedPayload) createValidPayload();
+    payload.v = 2; // Invalid version
+
+    assertThrows(Exception.class, () -> signatureVerifier.verify(payload, pinnedServerKey));
+  }
+
+  @Test
+  void testVerifyRejectsInvalidAlgorithm() throws Exception {
+    TestEncryptedPayload payload = new TestEncryptedPayload();
+    payload.v = 1;
+    payload.algs = new Algorithms("INVALID-KEM", "ML-DSA-65", "AES-256-GCM", "HKDF-SHA-512");
+    payload.ctKem = Base64Url.encode(new byte[1088]);
+    payload.nonce = Base64Url.encode(new byte[12]);
+    payload.aad = Base64Url.encode("test".getBytes());
+    payload.ciphertext = Base64Url.encode(new byte[32]);
+    payload.sig = Base64Url.encode(new byte[3309]);
+    payload.serverSigPk = pinnedServerKey;
+
+    assertThrows(Exception.class, () -> signatureVerifier.verify(payload, pinnedServerKey));
   }
 
   private EncryptedPayload createValidPayload() throws Exception {

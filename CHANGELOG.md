@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-01-04
+
+### Changed
+
+- `listEmails()` now returns fully hydrated emails with complete content, matching other SDKs
+- **Breaking:** Export format updated per spec §9.4 - public key is no longer included (derived from secret key)
+- **Breaking:** `ExportedInbox` field renamed from `secretKeyB64` to `secretKey` per spec §9.3
+- **Breaking:** `getPublicKeyB64()`/`setPublicKeyB64()` removed; use `derivePublicKey()` instead
+- **Breaking:** Signature verification now requires pinned server key parameter for key pinning per spec §8.1
+- Base64URL decoder now strictly rejects `+`, `/`, and `=` characters per spec §2.2
+
+### Added
+
+- `listEmailsMetadataOnly()` method for efficient metadata-only retrieval without fetching email content
+- `EmailMetadata` class for lightweight email representation
+- `version` field in `ExportedInbox` (currently version 1) per spec §9.3
+- `derivePublicKey()` method on `ExportedInbox` to derive public key from secret key per spec §10.2
+- `PayloadValidator` class for full payload validation per spec §8.1
+- Email address validation (must contain exactly one `@`) per spec §10.1
+- Server signature public key size validation (1952 bytes for ML-DSA-65)
+
+### Fixed
+
+- Stricter import validation order per spec §10.1
+
 ## [0.5.2] - 2025-12-31
 
 ### Changed

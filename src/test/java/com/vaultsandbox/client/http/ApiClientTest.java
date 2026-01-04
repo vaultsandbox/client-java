@@ -180,7 +180,7 @@ class ApiClientTest {
             """;
     mockServer.enqueue(new MockResponse().setBody(json).setResponseCode(200));
 
-    List<EmailData> emails = apiClient.listEmails("test@vaultsandbox.com");
+    List<EmailData> emails = apiClient.listEmails("test@vaultsandbox.com", false);
 
     assertNotNull(emails);
     assertEquals(1, emails.size());
@@ -189,6 +189,7 @@ class ApiClientTest {
 
     RecordedRequest request = mockServer.takeRequest();
     assertEquals("GET", request.getMethod());
+    assertFalse(request.getPath().contains("includeContent"));
   }
 
   @Test

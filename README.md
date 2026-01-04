@@ -4,6 +4,8 @@
   <img alt="VaultSandbox" src="./assets/logo-dark.svg">
 </picture>
 
+> **VaultSandbox is in Public Beta.** Join the journey to 1.0. Share feedback on [GitHub](https://github.com/vaultsandbox/gateway/discussions).
+
 # VaultSandbox Java Client
 
 [![CI](https://github.com/vaultsandbox/client-java/actions/workflows/ci.yml/badge.svg)](https://github.com/vaultsandbox/client-java/actions/workflows/ci.yml)
@@ -44,7 +46,7 @@ Stop mocking your email stack. If your app sends real emails in production, it m
 
 ```groovy
 dependencies {
-    testImplementation 'com.vaultsandbox:client:0.5.2'
+    testImplementation 'com.vaultsandbox:client:0.6.0'
 }
 ```
 
@@ -54,7 +56,7 @@ dependencies {
 <dependency>
     <groupId>com.vaultsandbox</groupId>
     <artifactId>client</artifactId>
-    <version>0.5.2</version>
+    <version>0.6.0</version>
     <scope>test</scope>
 </dependency>
 ```

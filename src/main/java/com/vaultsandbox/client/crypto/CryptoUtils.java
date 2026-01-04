@@ -13,7 +13,7 @@ import com.vaultsandbox.client.model.EncryptedPayload;
  * <pre>{@code
  * Keypair keypair = CryptoUtils.generateKeypair();
  * byte[] decrypted = CryptoUtils.decrypt(encryptedPayload, keypair.getSecretKey());
- * boolean valid = CryptoUtils.verifySignature(encryptedPayload);
+ * boolean valid = CryptoUtils.verifySignature(encryptedPayload, pinnedServerKey);
  * }</pre>
  */
 public final class CryptoUtils {
@@ -46,25 +46,37 @@ public final class CryptoUtils {
   }
 
   /**
-   * Verifies the ML-DSA-65 signature on an encrypted payload.
+   * Verifies the ML-DSA-65 signature on an encrypted payload with full validation.
+   *
+   * <p>This performs all validations per VaultSandbox spec §8.1:
+   *
+   * <ul>
+   *   <li>Version validation (must be 1)
+   *   <li>Algorithm validation
+   *   <li>Size validation for all binary fields
+   *   <li>Server key pinning verification
+   *   <li>ML-DSA-65 signature verification
+   * </ul>
    *
    * @param payload the encrypted payload with signature
+   * @param pinnedServerKey the server's public key from inbox creation (base64url)
    * @return true if signature is valid
    * @throws com.vaultsandbox.client.exception.SignatureVerificationException if verification fails
    */
-  public static boolean verifySignature(EncryptedPayload payload) {
-    return SIGNATURE_VERIFIER.verify(payload);
+  public static boolean verifySignature(EncryptedPayload payload, String pinnedServerKey) {
+    return SIGNATURE_VERIFIER.verify(payload, pinnedServerKey);
   }
 
   /**
    * Safely verifies signature without throwing exceptions.
    *
    * @param payload the encrypted payload with signature
+   * @param pinnedServerKey the server's public key from inbox creation (base64url)
    * @return true if signature is valid, false otherwise
    */
-  public static boolean verifySignatureSafe(EncryptedPayload payload) {
+  public static boolean verifySignatureSafe(EncryptedPayload payload, String pinnedServerKey) {
     try {
-      return SIGNATURE_VERIFIER.verify(payload);
+      return SIGNATURE_VERIFIER.verify(payload, pinnedServerKey);
     } catch (Exception e) {
       return false;
     }

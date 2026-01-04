@@ -16,12 +16,9 @@ import java.util.stream.Collectors;
  * metadata like authentication results (SPF, DKIM, DMARC) and extracted content (links,
  * attachments).
  *
- * <p>Some content fields may be {@code null} depending on how the email was retrieved:
- *
- * <ul>
- *   <li>Emails from {@link Inbox#listEmails()} have metadata only (from, to, subject, receivedAt)
- *   <li>Emails from {@link Inbox#getEmail(String)} or wait methods have full content
- * </ul>
+ * <p>All email retrieval methods ({@link Inbox#listEmails()}, {@link Inbox#getEmail(String)}, and
+ * wait methods) return fully hydrated emails with complete content including body text, HTML,
+ * headers, attachments, links, and authentication results.
  *
  * <p>The email object also provides convenience methods for common operations:
  *
@@ -195,8 +192,7 @@ public class Email {
   /**
    * Returns the plain text body of the email.
    *
-   * <p>May be {@code null} if the email only contains HTML or if this email was retrieved from
-   * {@link Inbox#listEmails()} (which returns metadata only).
+   * <p>May be {@code null} if the email only contains HTML.
    *
    * @return the plain text content, or {@code null} if not available
    */
@@ -207,8 +203,7 @@ public class Email {
   /**
    * Returns the HTML body of the email.
    *
-   * <p>May be {@code null} if the email is plain text only or if this email was retrieved from
-   * {@link Inbox#listEmails()} (which returns metadata only).
+   * <p>May be {@code null} if the email is plain text only.
    *
    * @return the HTML content, or {@code null} if not available
    */

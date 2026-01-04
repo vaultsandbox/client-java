@@ -138,9 +138,13 @@ public class ApiClient {
     return get("/api/inboxes/" + urlEncode(emailAddress) + "/sync", SyncStatus.class);
   }
 
-  public List<EmailData> listEmails(String emailAddress) {
+  public List<EmailData> listEmails(String emailAddress, boolean includeContent) {
     Type listType = new TypeToken<List<EmailData>>() {}.getType();
-    return get("/api/inboxes/" + urlEncode(emailAddress) + "/emails", listType);
+    String url = "/api/inboxes/" + urlEncode(emailAddress) + "/emails";
+    if (includeContent) {
+      url += "?includeContent=true";
+    }
+    return get(url, listType);
   }
 
   public EmailData getEmail(String emailAddress, String emailId) {

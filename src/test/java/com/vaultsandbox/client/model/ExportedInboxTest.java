@@ -1,7 +1,9 @@
 package com.vaultsandbox.client.model;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,13 +17,32 @@ import java.util.Arrays;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests for ExportedInbox validation per VaultSandbox spec §9 and §10.
+ *
+ * <p>Export format per spec §9.2:
+ *
+ * <pre>{@code
+ * {
+ *   "version": 1,
+ *   "emailAddress": "example@vaultsandbox.com",
+ *   "expiresAt": "2024-01-20T15:30:00Z",
+ *   "inboxHash": "abc123...",
+ *   "serverSigPk": "<base64url>",
+ *   "secretKey": "<base64url>",
+ *   "exportedAt": "2024-01-13T10:00:00Z"
+ * }
+ * }</pre>
+ *
+ * <p>Note: Per spec §9.4, publicKey is NOT included (derived from secretKey).
+ */
 class ExportedInboxTest {
 
-  // Raw ML-KEM-768 key sizes
+  // Raw ML-KEM-768 key sizes per spec Appendix B
   private static final int PUBLIC_KEY_SIZE = 1184;
   private static final int SECRET_KEY_SIZE = 2400;
-  // In raw ML-KEM-768 format, public key is at bytes 1152-2336 in secret key
   private static final int PK_OFFSET_IN_SK = 1152;
+  private static final int MLDSA_PUBLIC_KEY_SIZE = 1952;
 
   @BeforeAll
   static void setUp() {
@@ -29,24 +50,22 @@ class ExportedInboxTest {
   }
 
   /**
-   * Create a valid ExportedInbox with raw ML-KEM-768 format keys. The public key is embedded in the
-   * secret key at the expected offset.
+   * Create a valid ExportedInbox per spec §9.2. Public key is derived from secret key, not stored
+   * separately.
    */
-  private ExportedInbox createValidExportedInboxWithRawKeys() {
+  private ExportedInbox createValidExportedInbox() {
     // Generate random secret key
     byte[] sk = new byte[SECRET_KEY_SIZE];
     new SecureRandom().nextBytes(sk);
 
-    // Extract public key from secret key (as per ML-KEM spec)
-    byte[] pk = Arrays.copyOfRange(sk, PK_OFFSET_IN_SK, PK_OFFSET_IN_SK + PUBLIC_KEY_SIZE);
-
     ExportedInbox exported = new ExportedInbox();
+    exported.setVersion(1);
     exported.setEmailAddress("test@vaultsandbox.com");
     exported.setExpiresAt(Instant.now().plus(Duration.ofHours(1)).toString());
     exported.setInboxHash("hash123");
-    exported.setServerSigPk(Base64Url.encode(new byte[1952]));
-    exported.setPublicKeyB64(Base64Url.encode(pk));
-    exported.setSecretKeyB64(Base64Url.encode(sk));
+    exported.setServerSigPk(Base64Url.encode(new byte[MLDSA_PUBLIC_KEY_SIZE]));
+    // Per spec §9.4: public key is NOT included
+    exported.setSecretKey(Base64Url.encode(sk));
     exported.setExportedAt(Instant.now().toString());
     return exported;
   }
@@ -55,24 +74,46 @@ class ExportedInboxTest {
 
   @Test
   void testValidExport() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
-
+    ExportedInbox exported = createValidExportedInbox();
     assertDoesNotThrow(exported::validate);
   }
 
   @Test
   void testValidExportWithMinimalData() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
+    ExportedInbox exported = createValidExportedInbox();
     exported.setExportedAt(null); // exportedAt is optional
-
     assertDoesNotThrow(exported::validate);
   }
 
-  // ==================== Required Field Tests ====================
+  // ==================== Version Validation Tests (spec §10.1 step 2) ====================
+
+  @Test
+  void testInvalidVersion() {
+    ExportedInbox exported = createValidExportedInbox();
+    exported.setVersion(2);
+
+    InvalidImportDataException ex =
+        assertThrows(InvalidImportDataException.class, exported::validate);
+
+    assertTrue(ex.getMessage().contains("version"));
+  }
+
+  @Test
+  void testVersionZeroInvalid() {
+    ExportedInbox exported = createValidExportedInbox();
+    exported.setVersion(0);
+
+    InvalidImportDataException ex =
+        assertThrows(InvalidImportDataException.class, exported::validate);
+
+    assertTrue(ex.getMessage().contains("version"));
+  }
+
+  // ==================== Required Field Tests (spec §10.1 step 3) ====================
 
   @Test
   void testMissingEmailAddress() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
+    ExportedInbox exported = createValidExportedInbox();
     exported.setEmailAddress(null);
 
     InvalidImportDataException ex =
@@ -83,7 +124,7 @@ class ExportedInboxTest {
 
   @Test
   void testBlankEmailAddress() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
+    ExportedInbox exported = createValidExportedInbox();
     exported.setEmailAddress("   ");
 
     InvalidImportDataException ex =
@@ -94,7 +135,7 @@ class ExportedInboxTest {
 
   @Test
   void testMissingExpiresAt() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
+    ExportedInbox exported = createValidExportedInbox();
     exported.setExpiresAt(null);
 
     InvalidImportDataException ex =
@@ -105,7 +146,7 @@ class ExportedInboxTest {
 
   @Test
   void testMissingInboxHash() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
+    ExportedInbox exported = createValidExportedInbox();
     exported.setInboxHash(null);
 
     InvalidImportDataException ex =
@@ -116,7 +157,7 @@ class ExportedInboxTest {
 
   @Test
   void testMissingServerSigPk() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
+    ExportedInbox exported = createValidExportedInbox();
     exported.setServerSigPk(null);
 
     InvalidImportDataException ex =
@@ -126,32 +167,45 @@ class ExportedInboxTest {
   }
 
   @Test
-  void testMissingPublicKey() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
-    exported.setPublicKeyB64(null);
+  void testMissingSecretKey() {
+    ExportedInbox exported = createValidExportedInbox();
+    exported.setSecretKey(null);
 
     InvalidImportDataException ex =
         assertThrows(InvalidImportDataException.class, exported::validate);
 
-    assertTrue(ex.getErrors().contains("publicKeyB64 is required"));
+    assertTrue(ex.getErrors().contains("secretKey is required"));
+  }
+
+  // ==================== Email @ Validation (spec §10.1 step 4) ====================
+
+  @Test
+  void testEmailWithoutAtSign() {
+    ExportedInbox exported = createValidExportedInbox();
+    exported.setEmailAddress("testvaultsandbox.com");
+
+    InvalidImportDataException ex =
+        assertThrows(InvalidImportDataException.class, exported::validate);
+
+    assertTrue(ex.getMessage().contains("@"));
   }
 
   @Test
-  void testMissingSecretKey() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
-    exported.setSecretKeyB64(null);
+  void testEmailWithMultipleAtSigns() {
+    ExportedInbox exported = createValidExportedInbox();
+    exported.setEmailAddress("test@vault@sandbox.com");
 
     InvalidImportDataException ex =
         assertThrows(InvalidImportDataException.class, exported::validate);
 
-    assertTrue(ex.getErrors().contains("secretKeyB64 is required"));
+    assertTrue(ex.getMessage().contains("@"));
   }
 
-  // ==================== Timestamp Validation Tests ====================
+  // ==================== Timestamp Validation Tests (spec §10.1 step 8) ====================
 
   @Test
   void testInvalidExpiresAtTimestamp() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
+    ExportedInbox exported = createValidExportedInbox();
     exported.setExpiresAt("not-a-timestamp");
 
     InvalidImportDataException ex =
@@ -162,7 +216,7 @@ class ExportedInboxTest {
 
   @Test
   void testInvalidExportedAtTimestamp() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
+    ExportedInbox exported = createValidExportedInbox();
     exported.setExportedAt("invalid-date");
 
     InvalidImportDataException ex =
@@ -173,7 +227,7 @@ class ExportedInboxTest {
 
   @Test
   void testExpiredInbox() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
+    ExportedInbox exported = createValidExportedInbox();
     exported.setExpiresAt(Instant.now().minus(Duration.ofHours(1)).toString());
 
     InvalidImportDataException ex =
@@ -184,8 +238,7 @@ class ExportedInboxTest {
 
   @Test
   void testInboxExpiringNow() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
-    // Set expiration to slightly in the past
+    ExportedInbox exported = createValidExportedInbox();
     exported.setExpiresAt(Instant.now().minusSeconds(1).toString());
 
     InvalidImportDataException ex =
@@ -194,23 +247,12 @@ class ExportedInboxTest {
     assertTrue(ex.getMessage().contains("expired"));
   }
 
-  // ==================== Key Validation Tests ====================
-
-  @Test
-  void testInvalidPublicKeyLength() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
-    exported.setPublicKeyB64(Base64Url.encode(new byte[100]));
-
-    InvalidImportDataException ex =
-        assertThrows(InvalidImportDataException.class, exported::validate);
-
-    assertTrue(ex.getMessage().contains("1184 bytes"));
-  }
+  // ==================== Key Validation Tests (spec §10.1 steps 6-7) ====================
 
   @Test
   void testInvalidSecretKeyLength() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
-    exported.setSecretKeyB64(Base64Url.encode(new byte[100]));
+    ExportedInbox exported = createValidExportedInbox();
+    exported.setSecretKey(Base64Url.encode(new byte[100]));
 
     InvalidImportDataException ex =
         assertThrows(InvalidImportDataException.class, exported::validate);
@@ -219,20 +261,20 @@ class ExportedInboxTest {
   }
 
   @Test
-  void testInvalidPublicKeyBase64() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
-    exported.setPublicKeyB64("not-valid-base64!");
+  void testInvalidServerSigPkLength() {
+    ExportedInbox exported = createValidExportedInbox();
+    exported.setServerSigPk(Base64Url.encode(new byte[100]));
 
     InvalidImportDataException ex =
         assertThrows(InvalidImportDataException.class, exported::validate);
 
-    assertTrue(ex.getMessage().contains("base64url"));
+    assertTrue(ex.getMessage().contains("1952 bytes"));
   }
 
   @Test
   void testInvalidSecretKeyBase64() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
-    exported.setSecretKeyB64("not-valid-base64!");
+    ExportedInbox exported = createValidExportedInbox();
+    exported.setSecretKey("not+valid/base64!");
 
     InvalidImportDataException ex =
         assertThrows(InvalidImportDataException.class, exported::validate);
@@ -241,42 +283,36 @@ class ExportedInboxTest {
   }
 
   @Test
-  void testKeyMismatch() {
-    ExportedInbox exported = createValidExportedInboxWithRawKeys();
-
-    // Generate a different public key
-    byte[] differentPk = new byte[PUBLIC_KEY_SIZE];
-    new SecureRandom().nextBytes(differentPk);
-    exported.setPublicKeyB64(Base64Url.encode(differentPk));
+  void testInvalidServerSigPkBase64() {
+    ExportedInbox exported = createValidExportedInbox();
+    exported.setServerSigPk("not+valid/base64!");
 
     InvalidImportDataException ex =
         assertThrows(InvalidImportDataException.class, exported::validate);
 
-    assertTrue(ex.getMessage().contains("does not match"));
+    assertTrue(ex.getMessage().contains("base64url"));
   }
 
+  // ==================== Public Key Derivation Tests (spec §10.2) ====================
+
   @Test
-  void testKeyMismatchWithValidLengths() {
-    // Create two different raw keypairs
-    byte[] sk1 = new byte[SECRET_KEY_SIZE];
-    byte[] sk2 = new byte[SECRET_KEY_SIZE];
-    new SecureRandom().nextBytes(sk1);
-    new SecureRandom().nextBytes(sk2);
+  void testDerivePublicKey() {
+    // Generate a secret key
+    byte[] sk = new byte[SECRET_KEY_SIZE];
+    new SecureRandom().nextBytes(sk);
 
-    byte[] pk1 = Arrays.copyOfRange(sk1, PK_OFFSET_IN_SK, PK_OFFSET_IN_SK + PUBLIC_KEY_SIZE);
+    ExportedInbox exported = createValidExportedInbox();
+    exported.setSecretKey(Base64Url.encode(sk));
 
-    ExportedInbox exported = new ExportedInbox();
-    exported.setEmailAddress("test@vaultsandbox.com");
-    exported.setExpiresAt(Instant.now().plus(Duration.ofHours(1)).toString());
-    exported.setInboxHash("hash123");
-    exported.setServerSigPk(Base64Url.encode(new byte[1952]));
-    exported.setPublicKeyB64(Base64Url.encode(pk1)); // pk from sk1
-    exported.setSecretKeyB64(Base64Url.encode(sk2)); // sk2, different
+    // Derive public key
+    byte[] derivedPk = exported.derivePublicKey();
 
-    InvalidImportDataException ex =
-        assertThrows(InvalidImportDataException.class, exported::validate);
+    assertNotNull(derivedPk);
+    assertEquals(PUBLIC_KEY_SIZE, derivedPk.length);
 
-    assertTrue(ex.getMessage().contains("does not match"));
+    // Verify it matches expected bytes from secret key
+    byte[] expectedPk = Arrays.copyOfRange(sk, PK_OFFSET_IN_SK, PK_OFFSET_IN_SK + PUBLIC_KEY_SIZE);
+    assertArrayEquals(expectedPk, derivedPk);
   }
 
   // ==================== Multiple Errors Tests ====================
@@ -284,7 +320,7 @@ class ExportedInboxTest {
   @Test
   void testMultipleErrors() {
     ExportedInbox exported = new ExportedInbox();
-    // Leave everything null
+    // Leave everything null (except version which defaults to 1)
 
     InvalidImportDataException ex =
         assertThrows(InvalidImportDataException.class, exported::validate);
@@ -295,8 +331,7 @@ class ExportedInboxTest {
     assertTrue(ex.getErrors().contains("expiresAt is required"));
     assertTrue(ex.getErrors().contains("inboxHash is required"));
     assertTrue(ex.getErrors().contains("serverSigPk is required"));
-    assertTrue(ex.getErrors().contains("publicKeyB64 is required"));
-    assertTrue(ex.getErrors().contains("secretKeyB64 is required"));
+    assertTrue(ex.getErrors().contains("secretKey is required"));
   }
 
   @Test
@@ -317,28 +352,28 @@ class ExportedInboxTest {
   void testGettersSetters() {
     ExportedInbox exported = new ExportedInbox();
 
+    int version = 1;
     String emailAddress = "test@example.com";
     String expiresAt = Instant.now().toString();
     String inboxHash = "hash123";
     String serverSigPk = "serverKey";
-    String publicKeyB64 = "publicKey";
-    String secretKeyB64 = "secretKey";
+    String secretKey = "secretKey";
     String exportedAt = Instant.now().toString();
 
+    exported.setVersion(version);
     exported.setEmailAddress(emailAddress);
     exported.setExpiresAt(expiresAt);
     exported.setInboxHash(inboxHash);
     exported.setServerSigPk(serverSigPk);
-    exported.setPublicKeyB64(publicKeyB64);
-    exported.setSecretKeyB64(secretKeyB64);
+    exported.setSecretKey(secretKey);
     exported.setExportedAt(exportedAt);
 
+    assertEquals(version, exported.getVersion());
     assertEquals(emailAddress, exported.getEmailAddress());
     assertEquals(expiresAt, exported.getExpiresAt());
     assertEquals(inboxHash, exported.getInboxHash());
     assertEquals(serverSigPk, exported.getServerSigPk());
-    assertEquals(publicKeyB64, exported.getPublicKeyB64());
-    assertEquals(secretKeyB64, exported.getSecretKeyB64());
+    assertEquals(secretKey, exported.getSecretKey());
     assertEquals(exportedAt, exported.getExportedAt());
   }
 }

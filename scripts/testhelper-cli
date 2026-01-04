@@ -1,0 +1,2 @@
+#!/bin/bash
+java -jar "$(dirname "$0")/testhelper/target/testhelper-1.0.0.jar" "$@"

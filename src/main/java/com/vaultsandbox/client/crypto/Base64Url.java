@@ -12,10 +12,28 @@ public final class Base64Url {
     return ENCODER.encodeToString(data);
   }
 
+  /**
+   * Decodes a Base64URL string without padding.
+   *
+   * <p>Per VaultSandbox spec §2.2, implementations MUST reject input containing '+', '/', or '='.
+   *
+   * @param s the Base64URL encoded string
+   * @return the decoded bytes
+   * @throws IllegalArgumentException if the input contains invalid characters
+   */
   public static byte[] decode(String s) {
-    // Add padding if needed for decoder compatibility
-    int padding = (4 - s.length() % 4) % 4;
-    String padded = s + "=".repeat(padding);
-    return DECODER.decode(padded);
+    // Per spec §2.2: Implementations MUST reject input containing +, /, or =
+    if (s.indexOf('+') >= 0) {
+      throw new IllegalArgumentException("Invalid Base64URL: contains '+' character");
+    }
+    if (s.indexOf('/') >= 0) {
+      throw new IllegalArgumentException("Invalid Base64URL: contains '/' character");
+    }
+    if (s.indexOf('=') >= 0) {
+      throw new IllegalArgumentException("Invalid Base64URL: contains '=' padding character");
+    }
+
+    // The Java Base64 URL decoder handles unpadded input correctly
+    return DECODER.decode(s);
   }
 }

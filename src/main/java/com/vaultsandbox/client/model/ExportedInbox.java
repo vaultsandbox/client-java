@@ -8,21 +8,57 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Inbox export format per VaultSandbox spec §9.
+ *
+ * <p>JSON structure:
+ *
+ * <pre>{@code
+ * {
+ *   "version": 1,
+ *   "emailAddress": "example@vaultsandbox.com",
+ *   "expiresAt": "2024-01-20T15:30:00Z",
+ *   "inboxHash": "abc123...",
+ *   "serverSigPk": "<base64url>",
+ *   "secretKey": "<base64url>",
+ *   "exportedAt": "2024-01-13T10:00:00Z"
+ * }
+ * }</pre>
+ *
+ * <p>Per spec §9.4, the public key is NOT included as it can be derived from the secret key.
+ */
 public class ExportedInbox {
+  // Export format version per spec §9.3
+  private int version = 1;
+
   private String emailAddress;
   private String expiresAt;
   private String inboxHash;
   private String serverSigPk;
-  private String publicKeyB64;
-  private String secretKeyB64;
+
+  // Per spec §9.3: field is "secretKey", not "secretKeyB64"
+  // Public key is NOT included per spec §9.4
+  private String secretKey;
+
   private String exportedAt;
+
+  // Size constants per spec Appendix B
+  private static final int MLKEM_SECRET_KEY_SIZE = 2400;
+  private static final int MLKEM_PUBLIC_KEY_SIZE = 1184;
+  private static final int MLKEM_PUBLIC_KEY_OFFSET = 1152;
+  private static final int MLDSA_PUBLIC_KEY_SIZE = 1952;
 
   public ExportedInbox() {}
 
   public void validate() throws InvalidImportDataException {
     List<String> errors = new ArrayList<>();
 
-    // 1. Check required fields
+    // Step 2 per spec §10.1: Validate version
+    if (version != 1) {
+      errors.add("Unsupported export version: " + version + " (expected 1)");
+    }
+
+    // Step 3 per spec §10.1: Validate required fields
     if (emailAddress == null || emailAddress.isBlank()) {
       errors.add("emailAddress is required");
     }
@@ -35,14 +71,46 @@ public class ExportedInbox {
     if (serverSigPk == null || serverSigPk.isBlank()) {
       errors.add("serverSigPk is required");
     }
-    if (publicKeyB64 == null || publicKeyB64.isBlank()) {
-      errors.add("publicKeyB64 is required");
-    }
-    if (secretKeyB64 == null || secretKeyB64.isBlank()) {
-      errors.add("secretKeyB64 is required");
+    if (secretKey == null || secretKey.isBlank()) {
+      errors.add("secretKey is required");
     }
 
-    // 2. Validate timestamps
+    // Step 4 per spec §10.1: Validate emailAddress contains exactly one @
+    if (emailAddress != null && !emailAddress.isBlank()) {
+      long atCount = emailAddress.chars().filter(c -> c == '@').count();
+      if (atCount != 1) {
+        errors.add("emailAddress must contain exactly one '@' character");
+      }
+    }
+
+    // Step 5 per spec §10.1: Validate inboxHash is non-empty (already checked above)
+
+    // Step 6 per spec §10.1: Validate and decode secretKey
+    byte[] sk = null;
+    if (secretKey != null && !secretKey.isBlank()) {
+      try {
+        sk = Base64Url.decode(secretKey);
+        if (sk.length != MLKEM_SECRET_KEY_SIZE) {
+          errors.add("secretKey must be " + MLKEM_SECRET_KEY_SIZE + " bytes (raw ML-KEM-768)");
+        }
+      } catch (IllegalArgumentException e) {
+        errors.add("secretKey is not valid base64url: " + e.getMessage());
+      }
+    }
+
+    // Step 7 per spec §10.1: Validate and decode serverSigPk
+    if (serverSigPk != null && !serverSigPk.isBlank()) {
+      try {
+        byte[] sigPk = Base64Url.decode(serverSigPk);
+        if (sigPk.length != MLDSA_PUBLIC_KEY_SIZE) {
+          errors.add("serverSigPk must be " + MLDSA_PUBLIC_KEY_SIZE + " bytes (raw ML-DSA-65)");
+        }
+      } catch (IllegalArgumentException e) {
+        errors.add("serverSigPk is not valid base64url: " + e.getMessage());
+      }
+    }
+
+    // Step 8 per spec §10.1: Validate timestamps
     if (expiresAt != null) {
       try {
         Instant.parse(expiresAt);
@@ -59,43 +127,7 @@ public class ExportedInbox {
       }
     }
 
-    // 3. Validate base64 encoding and key format (raw ML-KEM-768 keys)
-    byte[] pk = null;
-    byte[] sk = null;
-
-    if (publicKeyB64 != null && !publicKeyB64.isBlank()) {
-      try {
-        pk = Base64Url.decode(publicKeyB64);
-        // Raw ML-KEM-768 public key is 1184 bytes
-        if (pk.length != 1184) {
-          errors.add("publicKey must be 1184 bytes (raw ML-KEM-768)");
-        }
-      } catch (IllegalArgumentException e) {
-        errors.add("publicKeyB64 is not valid base64url");
-      }
-    }
-
-    if (secretKeyB64 != null && !secretKeyB64.isBlank()) {
-      try {
-        sk = Base64Url.decode(secretKeyB64);
-        // Raw ML-KEM-768 secret key is 2400 bytes
-        if (sk.length != 2400) {
-          errors.add("secretKey must be 2400 bytes (raw ML-KEM-768)");
-        }
-      } catch (IllegalArgumentException e) {
-        errors.add("secretKeyB64 is not valid base64url");
-      }
-    }
-
-    // 4. Verify public key can be derived from secret key
-    if (pk != null && sk != null && pk.length == 1184 && sk.length == 2400) {
-      byte[] derivedPk = Arrays.copyOfRange(sk, 1152, 2336);
-      if (!Arrays.equals(derivedPk, pk)) {
-        errors.add("publicKey does not match secretKey");
-      }
-    }
-
-    // 5. Check expiration
+    // Check expiration
     if (expiresAt != null) {
       try {
         Instant expires = Instant.parse(expiresAt);
@@ -110,6 +142,14 @@ public class ExportedInbox {
     if (!errors.isEmpty()) {
       throw new InvalidImportDataException(errors);
     }
+  }
+
+  public int getVersion() {
+    return version;
+  }
+
+  public void setVersion(int version) {
+    this.version = version;
   }
 
   public String getEmailAddress() {
@@ -144,20 +184,29 @@ public class ExportedInbox {
     this.serverSigPk = serverSigPk;
   }
 
-  public String getPublicKeyB64() {
-    return publicKeyB64;
+  public String getSecretKey() {
+    return secretKey;
   }
 
-  public void setPublicKeyB64(String publicKeyB64) {
-    this.publicKeyB64 = publicKeyB64;
+  public void setSecretKey(String secretKey) {
+    this.secretKey = secretKey;
   }
 
-  public String getSecretKeyB64() {
-    return secretKeyB64;
-  }
-
-  public void setSecretKeyB64(String secretKeyB64) {
-    this.secretKeyB64 = secretKeyB64;
+  /**
+   * Derives the public key from the secret key per spec §10.2.
+   *
+   * @return the derived public key bytes, or null if secretKey is not set
+   */
+  public byte[] derivePublicKey() {
+    if (secretKey == null || secretKey.isBlank()) {
+      return null;
+    }
+    byte[] sk = Base64Url.decode(secretKey);
+    if (sk.length != MLKEM_SECRET_KEY_SIZE) {
+      return null;
+    }
+    return Arrays.copyOfRange(
+        sk, MLKEM_PUBLIC_KEY_OFFSET, MLKEM_PUBLIC_KEY_OFFSET + MLKEM_PUBLIC_KEY_SIZE);
   }
 
   public String getExportedAt() {

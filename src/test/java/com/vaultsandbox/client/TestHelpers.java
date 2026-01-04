@@ -22,16 +22,20 @@ public final class TestHelpers {
   private static final KeypairGenerator KEYPAIR_GENERATOR = new KeypairGenerator();
   private static final Gson GSON = new GsonBuilder().create();
 
-  /** Create a valid ExportedInbox for testing. */
+  /**
+   * Create a valid ExportedInbox for testing. Per VaultSandbox spec §9.4, public key is NOT
+   * included (derived from secret key).
+   */
   public static ExportedInbox createValidExportedInbox() {
     Keypair kp = KEYPAIR_GENERATOR.generate();
     ExportedInbox exported = new ExportedInbox();
+    exported.setVersion(1);
     exported.setEmailAddress("test@vaultsandbox.com");
     exported.setExpiresAt(Instant.now().plus(Duration.ofHours(1)).toString());
     exported.setInboxHash("hash123");
     exported.setServerSigPk(Base64Url.encode(new byte[1952]));
-    exported.setPublicKeyB64(Base64Url.encode(kp.getPublicKey()));
-    exported.setSecretKeyB64(Base64Url.encode(kp.getSecretKey()));
+    // Per spec §9.4: public key is NOT included (derived from secret key)
+    exported.setSecretKey(Base64Url.encode(kp.getSecretKey()));
     exported.setExportedAt(Instant.now().toString());
     return exported;
   }

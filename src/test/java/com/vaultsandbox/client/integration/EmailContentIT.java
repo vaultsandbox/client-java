@@ -16,6 +16,7 @@ import com.vaultsandbox.client.model.AuthResults;
 import com.vaultsandbox.client.model.AuthValidation;
 import com.vaultsandbox.client.strategy.EmailFilter;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -546,6 +547,62 @@ class EmailContentIT {
         // Expected - email should be deleted
         assertTrue(e.getClass().getSimpleName().contains("EmailNotFoundException"));
       }
+    } finally {
+      subscription.unsubscribe();
+      client.deleteInbox(inbox.getEmailAddress());
+    }
+  }
+
+  // ==================== listEmails Returns Full Content ====================
+
+  @Test
+  @Order(60)
+  void testListEmailsReturnsFullContent() throws Exception {
+    assumeTrue(SmtpTestHelper.isAvailable(), "SMTP not available");
+
+    Inbox inbox = client.createInbox();
+    SmtpTestHelper smtp = new SmtpTestHelper();
+
+    String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+    String subject = "List Full Content " + uniqueId;
+    String textBody = "This is the plain text body for " + uniqueId;
+    String htmlBody =
+        "<html><body><p>This is HTML body for "
+            + uniqueId
+            + "</p><a href=\"https://example.com/link\">Link</a></body></html>";
+
+    var subscription = inbox.onNewEmail(e -> {});
+
+    try {
+      Thread.sleep(500);
+
+      smtp.sendHtmlEmail(inbox.getEmailAddress(), "listfull@test.com", subject, textBody, htmlBody);
+
+      // Wait for email to arrive
+      Email awaited =
+          inbox.awaitEmail(EmailFilter.builder().subject(uniqueId).build(), Duration.ofSeconds(30));
+      assertNotNull(awaited, "Email should be received");
+
+      // Now call listEmails and verify it returns full content
+      List<Email> emails = inbox.listEmails();
+      assertFalse(emails.isEmpty(), "Should have at least one email");
+
+      // Find our email in the list
+      Email listed =
+          emails.stream().filter(e -> e.getSubject().contains(uniqueId)).findFirst().orElse(null);
+      assertNotNull(listed, "Our email should be in the list");
+
+      // Verify full content is present (this is the key assertion)
+      assertNotNull(listed.getText(), "listEmails should return email with text content");
+      assertNotNull(listed.getHtml(), "listEmails should return email with HTML content");
+      assertTrue(
+          listed.getText().contains(uniqueId), "Text should contain expected content: " + uniqueId);
+      assertTrue(
+          listed.getHtml().contains(uniqueId), "HTML should contain expected content: " + uniqueId);
+
+      // Verify links were extracted too
+      assertNotNull(listed.getLinks(), "Links should be present");
+      assertFalse(listed.getLinks().isEmpty(), "Should have extracted links");
     } finally {
       subscription.unsubscribe();
       client.deleteInbox(inbox.getEmailAddress());

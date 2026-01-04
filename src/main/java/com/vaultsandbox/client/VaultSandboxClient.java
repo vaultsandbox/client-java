@@ -272,6 +272,9 @@ public final class VaultSandboxClient implements Closeable {
    * <p>The exported data contains the cryptographic keys needed to decrypt emails in the inbox.
    * This can be used to persist inbox access across sessions or share access with other processes.
    *
+   * <p>Per VaultSandbox spec §9.4, the public key is NOT included in the export as it can be
+   * derived from the secret key.
+   *
    * <p><strong>Security note:</strong> The exported data contains sensitive cryptographic keys.
    * Store it securely and do not expose it to untrusted parties.
    *
@@ -283,12 +286,13 @@ public final class VaultSandboxClient implements Closeable {
   public ExportedInbox exportInbox(Inbox inbox) {
     log.debug("Exporting inbox: {}", inbox.getEmailAddress());
     ExportedInbox exported = new ExportedInbox();
+    exported.setVersion(1);
     exported.setEmailAddress(inbox.getEmailAddress());
     exported.setExpiresAt(inbox.getExpiresAt().toString());
     exported.setInboxHash(inbox.getHash());
     exported.setServerSigPk(inbox.getServerSigPk());
-    exported.setPublicKeyB64(Base64Url.encode(inbox.getKeypair().getPublicKey()));
-    exported.setSecretKeyB64(Base64Url.encode(inbox.getKeypair().getSecretKey()));
+    // Per spec §9.4: public key is NOT included (derived from secret key)
+    exported.setSecretKey(Base64Url.encode(inbox.getKeypair().getSecretKey()));
     exported.setExportedAt(Instant.now().toString());
     return exported;
   }
@@ -348,7 +352,7 @@ public final class VaultSandboxClient implements Closeable {
    */
   public Inbox importInbox(ExportedInbox data) throws InvalidImportDataException {
     log.debug("Importing inbox: {}", data.getEmailAddress());
-    // Validate the import data
+    // Validate the import data per spec §10.1
     data.validate();
 
     // Check if inbox already exists locally
@@ -364,12 +368,13 @@ public final class VaultSandboxClient implements Closeable {
       throw new InvalidImportDataException("Inbox no longer exists on server");
     }
 
-    // Reconstruct keypair
-    byte[] publicKey = Base64Url.decode(data.getPublicKeyB64());
-    byte[] secretKey = Base64Url.decode(data.getSecretKeyB64());
+    // Reconstruct keypair per spec §10.2
+    // Public key is derived from secret key, not stored separately
+    byte[] secretKey = Base64Url.decode(data.getSecretKey());
+    byte[] publicKey = data.derivePublicKey();
     Keypair keypair = new Keypair(publicKey, secretKey);
 
-    // Create inbox object
+    // Create inbox object per spec §10.3
     InboxData inboxData = new InboxData();
     inboxData.setEmailAddress(data.getEmailAddress());
     inboxData.setExpiresAt(data.getExpiresAt());
