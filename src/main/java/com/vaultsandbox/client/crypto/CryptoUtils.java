@@ -1,6 +1,11 @@
 package com.vaultsandbox.client.crypto;
 
 import com.vaultsandbox.client.model.EncryptedPayload;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Cryptographic utilities for advanced users.
@@ -100,5 +105,27 @@ public final class CryptoUtils {
    */
   public static byte[] fromBase64Url(String base64url) {
     return Base64Url.decode(base64url);
+  }
+
+  /**
+   * Computes the emails hash for a list of email IDs per VaultSandbox spec.
+   *
+   * <p>Hash = base64url(sha256(sortedIds.join(",")))
+   *
+   * <p>The hash is computed on-demand, never stored.
+   *
+   * @param emailIds list of email IDs
+   * @return base64url encoded SHA-256 hash
+   */
+  public static String computeEmailsHash(List<String> emailIds) {
+    String joined = emailIds.stream().sorted().collect(Collectors.joining(","));
+
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(joined.getBytes(StandardCharsets.UTF_8));
+      return Base64Url.encode(hash);
+    } catch (NoSuchAlgorithmException e) {
+      throw new RuntimeException("SHA-256 not available", e);
+    }
   }
 }

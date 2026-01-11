@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.vaultsandbox.client.exception.DecryptionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -83,5 +85,60 @@ class KeypairGeneratorTest {
     // ML-KEM-768 standard key sizes
     assertEquals(1184, kp.getPublicKey().length, "Public key should be 1184 bytes for ML-KEM-768");
     assertEquals(2400, kp.getSecretKey().length, "Secret key should be 2400 bytes for ML-KEM-768");
+  }
+
+  @Test
+  void testDerivePublicKeyFromSecretKey() {
+    Keypair kp = keypairGenerator.generate();
+
+    byte[] derivedPublicKey = keypairGenerator.derivePublicKey(kp.getSecretKey());
+
+    assertNotNull(derivedPublicKey);
+    assertEquals(KeypairGenerator.PUBLIC_KEY_SIZE, derivedPublicKey.length);
+    assertArrayEquals(
+        kp.getPublicKey(), derivedPublicKey, "Derived public key should match original");
+  }
+
+  @Test
+  void testDerivePublicKeyMultipleKeypairs() {
+    // Verify derivation works correctly for multiple different keypairs
+    for (int i = 0; i < 3; i++) {
+      Keypair kp = keypairGenerator.generate();
+      byte[] derivedPublicKey = keypairGenerator.derivePublicKey(kp.getSecretKey());
+      assertArrayEquals(
+          kp.getPublicKey(),
+          derivedPublicKey,
+          "Derived public key should match original for keypair " + i);
+    }
+  }
+
+  @Test
+  void testDerivePublicKeyWithInvalidSizeThrows() {
+    byte[] invalidSecretKey = new byte[100]; // Wrong size
+
+    DecryptionException ex =
+        assertThrows(
+            DecryptionException.class, () -> keypairGenerator.derivePublicKey(invalidSecretKey));
+    assertTrue(ex.getMessage().contains("Invalid secret key size"));
+  }
+
+  @Test
+  void testDerivePublicKeyWithEmptyArrayThrows() {
+    byte[] emptyKey = new byte[0];
+
+    DecryptionException ex =
+        assertThrows(DecryptionException.class, () -> keypairGenerator.derivePublicKey(emptyKey));
+    assertTrue(ex.getMessage().contains("Invalid secret key size"));
+  }
+
+  @Test
+  void testDerivePublicKeyWithSlightlyWrongSizeThrows() {
+    // Off by one from expected size
+    byte[] wrongSize = new byte[KeypairGenerator.SECRET_KEY_SIZE - 1];
+
+    DecryptionException ex =
+        assertThrows(DecryptionException.class, () -> keypairGenerator.derivePublicKey(wrongSize));
+    assertTrue(ex.getMessage().contains("Invalid secret key size"));
+    assertTrue(ex.getMessage().contains("expected " + KeypairGenerator.SECRET_KEY_SIZE));
   }
 }

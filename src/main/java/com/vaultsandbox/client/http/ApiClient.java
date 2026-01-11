@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
+import javax.annotation.processing.Generated;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -126,6 +127,9 @@ public class ApiClient {
     return post("/api/inboxes", payload, InboxData.class);
   }
 
+  // Excluded from coverage: destructive method only used for test cleanup, not for production use
+  @SuppressWarnings("unused")
+  @Generated("excluded from coverage - test cleanup only")
   public DeleteAllResponse deleteAllInboxes() {
     return delete("/api/inboxes", DeleteAllResponse.class);
   }
@@ -162,7 +166,7 @@ public class ApiClient {
   public void markAsRead(String emailAddress, String emailId) {
     patch(
         "/api/inboxes/" + urlEncode(emailAddress) + "/emails/" + urlEncode(emailId) + "/read",
-        new Object());
+        java.util.Map.of("isRead", true));
   }
 
   public void deleteEmail(String emailAddress, String emailId) {

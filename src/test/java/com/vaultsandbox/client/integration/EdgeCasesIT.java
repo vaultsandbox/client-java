@@ -53,10 +53,6 @@ class EdgeCasesIT {
   @AfterAll
   static void tearDown() {
     if (client != null) {
-      try {
-        client.deleteAllInboxes();
-      } catch (Exception ignored) {
-      }
       client.close();
     }
   }

@@ -46,7 +46,7 @@ Stop mocking your email stack. If your app sends real emails in production, it m
 
 ```groovy
 dependencies {
-    testImplementation 'com.vaultsandbox:client:0.6.0'
+    testImplementation 'com.vaultsandbox:client:0.6.1'
 }
 ```
 
@@ -56,7 +56,7 @@ dependencies {
 <dependency>
     <groupId>com.vaultsandbox</groupId>
     <artifactId>client</artifactId>
-    <version>0.6.0</version>
+    <version>0.6.1</version>
     <scope>test</scope>
 </dependency>
 ```

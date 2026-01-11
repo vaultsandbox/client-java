@@ -83,7 +83,7 @@ public final class ClientConfig {
     return apiKey;
   }
 
-  /** Returns the email delivery strategy (SSE, polling, or auto). */
+  /** Returns the email delivery strategy (SSE or polling). */
   public StrategyType getStrategy() {
     return strategy;
   }
@@ -147,12 +147,12 @@ public final class ClientConfig {
   public static class Builder {
     private String baseUrl = "https://smtp.vaultsandbox.com";
     private String apiKey;
-    private StrategyType strategy = StrategyType.AUTO;
+    private StrategyType strategy = StrategyType.SSE;
     private Duration httpTimeout = Duration.ofSeconds(30);
     private Duration waitTimeout = Duration.ofSeconds(30);
     private int maxRetries = 3;
     private Duration retryDelay = Duration.ofSeconds(1);
-    private Duration sseReconnectInterval = Duration.ofSeconds(5);
+    private Duration sseReconnectInterval = Duration.ofSeconds(2);
     private int sseMaxReconnectAttempts = 10;
     private Duration pollInterval = Duration.ofSeconds(2);
     private Duration maxBackoff = Duration.ofSeconds(30);
@@ -185,7 +185,7 @@ public final class ClientConfig {
     /**
      * Sets the email delivery strategy.
      *
-     * @param type the strategy type (default: AUTO)
+     * @param type the strategy type (default: SSE)
      * @return this builder
      * @see StrategyType
      */
@@ -241,7 +241,7 @@ public final class ClientConfig {
     /**
      * Sets the interval between SSE reconnection attempts.
      *
-     * @param interval the reconnect interval (default: 5 seconds)
+     * @param interval the reconnect interval (default: 2 seconds)
      * @return this builder
      */
     public Builder sseReconnectInterval(Duration interval) {

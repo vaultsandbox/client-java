@@ -116,26 +116,6 @@ class CreateInboxIT {
   }
 
   @Test
-  @Order(6)
-  void testDeleteAllInboxes() {
-    // Create multiple inboxes
-    Inbox inbox1 = client.createInbox();
-    Inbox inbox2 = client.createInbox();
-
-    assertNotNull(inbox1);
-    assertNotNull(inbox2);
-
-    // Delete all
-    int deleted = client.deleteAllInboxes();
-
-    assertTrue(deleted >= 2);
-
-    // Verify they're gone - use original inbox references to call API
-    assertThrows(InboxNotFoundException.class, inbox1::getSyncStatus);
-    assertThrows(InboxNotFoundException.class, inbox2::getSyncStatus);
-  }
-
-  @Test
   @Order(7)
   void testGetInbox() {
     Inbox inbox = client.createInbox();

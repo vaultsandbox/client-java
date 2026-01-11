@@ -71,10 +71,6 @@ final class ReadmeExamplesTest {
   @AfterAll
   static void tearDownClass() {
     if (sharedClient != null) {
-      try {
-        sharedClient.deleteAllInboxes();
-      } catch (Exception ignored) {
-      }
       sharedClient.close();
     }
   }
@@ -198,7 +194,7 @@ final class ReadmeExamplesTest {
       // ClientConfig config = ClientConfig.builder()
       //     .apiKey("your-api-key")
       //     .baseUrl("https://smtp.vaultsandbox.com")
-      //     .strategy(StrategyType.AUTO)
+      //     .strategy(StrategyType.SSE)
       //     .waitTimeout(Duration.ofSeconds(30))
       //     .maxRetries(3)
       //     .build();
@@ -207,7 +203,7 @@ final class ReadmeExamplesTest {
           ClientConfig.builder()
               .apiKey(TestConfig.getApiKey())
               .baseUrl(TestConfig.getBaseUrl())
-              .strategy(StrategyType.AUTO)
+              .strategy(StrategyType.SSE)
               .httpTimeout(Duration.ofSeconds(30))
               .waitTimeout(Duration.ofSeconds(30))
               .maxRetries(3)
@@ -219,7 +215,7 @@ final class ReadmeExamplesTest {
 
       assertEquals(TestConfig.getApiKey(), config.getApiKey());
       assertEquals(TestConfig.getBaseUrl(), config.getBaseUrl());
-      assertEquals(StrategyType.AUTO, config.getStrategy());
+      assertEquals(StrategyType.SSE, config.getStrategy());
       assertEquals(Duration.ofSeconds(30), config.getHttpTimeout());
       assertEquals(Duration.ofSeconds(30), config.getWaitTimeout());
       assertEquals(3, config.getMaxRetries());
@@ -232,11 +228,10 @@ final class ReadmeExamplesTest {
     @Test
     @DisplayName("StrategyType enum values exist")
     void testStrategyTypeEnum() {
-      // README mentions: SSE, POLLING, AUTO
+      // README mentions: SSE, POLLING
 
       assertNotNull(StrategyType.SSE);
       assertNotNull(StrategyType.POLLING);
-      assertNotNull(StrategyType.AUTO);
     }
   }
 
@@ -864,21 +859,6 @@ final class ReadmeExamplesTest {
       } catch (Exception e) {
         // Expected - inbox should not exist
       }
-    }
-
-    @Test
-    @Order(4)
-    @DisplayName("deleteAllInboxes() - delete all inboxes")
-    void testDeleteAllInboxes() {
-      // README Method: deleteAllInboxes() | Deletes all inboxes, returns count
-
-      // Create some inboxes first
-      sharedClient.createInbox();
-      sharedClient.createInbox();
-
-      int deleted = sharedClient.deleteAllInboxes();
-
-      assertTrue(deleted >= 2);
     }
 
     @Test

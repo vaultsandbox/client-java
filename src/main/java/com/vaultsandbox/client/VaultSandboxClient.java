@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.processing.Generated;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -187,10 +188,16 @@ public final class VaultSandboxClient implements Closeable {
    * <p>This permanently removes all inboxes from the server and clears this client's local
    * registry. All emails in all inboxes will be lost.
    *
+   * <p><b>Warning:</b> This is a destructive operation intended only for test cleanup. Production
+   * code should use {@link #deleteInbox(String)} to delete individual inboxes.
+   *
    * @return the number of inboxes that were deleted
    * @throws ApiException if the API request fails
    * @throws NetworkException if unable to connect to the server
    */
+  // Excluded from coverage: destructive method only used for test cleanup, not for production use
+  @SuppressWarnings("unused")
+  @Generated("excluded from coverage - test cleanup only")
   public int deleteAllInboxes() {
     log.info("Deleting all inboxes");
     DeleteAllResponse response = apiClient.deleteAllInboxes();

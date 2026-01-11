@@ -60,10 +60,6 @@ class PollingStrategyIT {
   @AfterAll
   static void tearDown() {
     if (pollingClient != null) {
-      try {
-        pollingClient.deleteAllInboxes();
-      } catch (Exception ignored) {
-      }
       pollingClient.close();
     }
   }

@@ -180,11 +180,6 @@ public class PollingStrategy implements DeliveryStrategy {
   }
 
   @Override
-  public boolean isSupported() {
-    return true; // Polling always works
-  }
-
-  @Override
   public void close() {
     log.info("Closing polling strategy");
     pollingTasks.values().forEach(t -> t.cancel(false));

@@ -5,12 +5,15 @@ import com.google.gson.GsonBuilder;
 import com.vaultsandbox.client.ClientConfig;
 import com.vaultsandbox.client.Email;
 import com.vaultsandbox.client.Inbox;
+import com.vaultsandbox.client.crypto.CryptoUtils;
 import com.vaultsandbox.client.exception.SseException;
 import com.vaultsandbox.client.exception.TimeoutException;
-import java.io.IOException;
+import com.vaultsandbox.client.model.EmailMetadata;
+import com.vaultsandbox.client.model.SyncStatus;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,6 +22,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -38,6 +42,7 @@ public class SseStrategy implements DeliveryStrategy {
 
   private final Map<String, Set<Consumer<Email>>> subscriptions = new ConcurrentHashMap<>();
   private final Map<String, Inbox> inboxesByHash = new ConcurrentHashMap<>();
+  private final Map<String, Set<String>> seenEmailsByInbox = new ConcurrentHashMap<>();
 
   private volatile EventSource eventSource;
   private final Object connectionLock = new Object();
@@ -53,9 +58,8 @@ public class SseStrategy implements DeliveryStrategy {
   // Track pending futures for waitForEmail calls so we can complete them on failure
   private final Set<CompletableFuture<Email>> pendingFutures = ConcurrentHashMap.newKeySet();
 
-  // Failure state and callback for fallback support
+  // Failure state
   private volatile boolean permanentlyFailed = false;
-  private volatile Consumer<SseException> failureCallback;
 
   public SseStrategy(OkHttpClient client, ClientConfig config) {
     this.client = client;
@@ -129,6 +133,13 @@ public class SseStrategy implements DeliveryStrategy {
     inboxesByHash.put(hash, inbox);
     subscriptions.computeIfAbsent(hash, k -> ConcurrentHashMap.newKeySet()).add(callback);
 
+    // Initialize seen emails from current state (metadata only for efficiency)
+    List<EmailMetadata> existingEmails = inbox.listEmailsMetadataOnly();
+    Set<String> seen = seenEmailsByInbox.computeIfAbsent(hash, k -> ConcurrentHashMap.newKeySet());
+    for (EmailMetadata email : existingEmails) {
+      seen.add(email.getId());
+    }
+
     reconnect();
 
     return () -> unsubscribe(hash, callback);
@@ -142,6 +153,7 @@ public class SseStrategy implements DeliveryStrategy {
         log.debug("Unsubscribing from inbox hash: {}", hash);
         subscriptions.remove(hash);
         inboxesByHash.remove(hash);
+        seenEmailsByInbox.remove(hash);
         reconnect(); // Reconnect with updated inbox list
       }
     }
@@ -159,6 +171,70 @@ public class SseStrategy implements DeliveryStrategy {
       }
 
       connect();
+    }
+  }
+
+  private void syncAllInboxes() {
+    for (Map.Entry<String, Inbox> entry : inboxesByHash.entrySet()) {
+      String hash = entry.getKey();
+      Inbox inbox = entry.getValue();
+      try {
+        syncInbox(hash, inbox);
+      } catch (Exception e) {
+        log.warn("Sync failed for {}: {}", inbox.getEmailAddress(), e.getMessage());
+      }
+    }
+  }
+
+  private void syncInbox(String inboxHash, Inbox inbox) {
+    // Step 1: Get metadata only (lightweight, no content)
+    List<EmailMetadata> emailsMetadata = inbox.listEmailsMetadataOnly();
+    List<String> emailIds =
+        emailsMetadata.stream().map(EmailMetadata::getId).collect(Collectors.toList());
+
+    // Step 2: Compute local hash from IDs
+    String localHash = CryptoUtils.computeEmailsHash(emailIds);
+
+    // Step 3: Get server hash
+    SyncStatus status = inbox.getSyncStatus();
+
+    // Step 4: Compare hashes
+    if (Objects.equals(localHash, status.getEmailsHash())) {
+      log.debug("Hashes match for {}, no sync needed", inbox.getEmailAddress());
+      return; // No changes, skip sync
+    }
+
+    log.info("Hash mismatch for {}, syncing", inbox.getEmailAddress());
+
+    // Step 5: Track seen emails
+    Set<String> seen =
+        seenEmailsByInbox.computeIfAbsent(inboxHash, k -> ConcurrentHashMap.newKeySet());
+    Set<String> serverIds = emailIds.stream().collect(Collectors.toSet());
+
+    // Step 6: Remove deleted emails from seen set
+    seen.retainAll(serverIds);
+
+    // Step 7: Find new emails and notify subscribers
+    Set<Consumer<Email>> callbacks = subscriptions.get(inboxHash);
+    if (callbacks != null) {
+      for (EmailMetadata metadata : emailsMetadata) {
+        if (seen.add(metadata.getId())) {
+          // Only fetch full email content for NEW emails
+          try {
+            Email email = inbox.getEmail(metadata.getId());
+            log.debug("New email from sync: {}", email.getId());
+            for (Consumer<Email> callback : callbacks) {
+              try {
+                callback.accept(email);
+              } catch (Exception e) {
+                log.warn("Callback error: {}", e.getMessage());
+              }
+            }
+          } catch (Exception e) {
+            log.warn("Failed to fetch email {}: {}", metadata.getId(), e.getMessage());
+          }
+        }
+      }
     }
   }
 
@@ -181,6 +257,8 @@ public class SseStrategy implements DeliveryStrategy {
                   public void onOpen(EventSource es, Response response) {
                     log.info("SSE connection established");
                     reconnectAttempts = 0; // Reset on successful connection
+                    // Trigger sync for all inboxes after reconnect
+                    syncAllInboxes();
                   }
 
                   @Override
@@ -237,6 +315,14 @@ public class SseStrategy implements DeliveryStrategy {
 
       Inbox inbox = inboxesByHash.get(inboxHash);
       if (inbox == null) {
+        return;
+      }
+
+      // Track as seen - skip if already seen
+      Set<String> seen =
+          seenEmailsByInbox.computeIfAbsent(inboxHash, k -> ConcurrentHashMap.newKeySet());
+      if (!seen.add(event.emailId)) {
+        log.debug("Email {} already seen, skipping", event.emailId);
         return;
       }
 
@@ -308,70 +394,6 @@ public class SseStrategy implements DeliveryStrategy {
       future.completeExceptionally(failure);
     }
     pendingFutures.clear();
-
-    // Notify failure callback (used by AutoStrategy for fallback)
-    Consumer<SseException> callback = this.failureCallback;
-    if (callback != null) {
-      try {
-        callback.accept(failure);
-      } catch (Exception e) {
-        log.warn("Failure callback error: {}", e.getMessage());
-      }
-    }
-  }
-
-  /**
-   * Sets a callback to be invoked when SSE permanently fails.
-   *
-   * <p>This is used by AutoStrategy to trigger fallback to polling.
-   *
-   * @param callback the failure callback
-   */
-  public void setFailureCallback(Consumer<SseException> callback) {
-    this.failureCallback = callback;
-  }
-
-  /**
-   * Returns whether SSE has permanently failed.
-   *
-   * @return true if SSE failed after max reconnect attempts
-   */
-  public boolean isPermanentlyFailed() {
-    return permanentlyFailed;
-  }
-
-  @Override
-  public boolean isSupported() {
-    // If we've already permanently failed, SSE is not supported
-    if (permanentlyFailed) {
-      return false;
-    }
-
-    // Test SSE connectivity with a quick HEAD request to the events endpoint
-    Request request =
-        new Request.Builder()
-            .url(baseUrl + "/api/events")
-            .header("X-API-Key", apiKey)
-            .head()
-            .build();
-
-    try (Response response = client.newCall(request).execute()) {
-      int code = response.code();
-      // Accept 2xx, 3xx, and 405 (Method Not Allowed - means endpoint exists but HEAD not allowed)
-      // Reject 4xx (except 405) and 5xx as indicators that SSE won't work
-      if (code >= 200 && code < 400) {
-        return true;
-      }
-      if (code == 405) {
-        // HEAD not allowed, but endpoint exists - SSE likely supported
-        return true;
-      }
-      log.debug("SSE endpoint returned {}, falling back to polling", code);
-      return false;
-    } catch (IOException e) {
-      log.debug("SSE connectivity check failed: {}, falling back to polling", e.getMessage());
-      return false;
-    }
   }
 
   @Override
@@ -396,6 +418,7 @@ public class SseStrategy implements DeliveryStrategy {
       }
       subscriptions.clear();
       inboxesByHash.clear();
+      seenEmailsByInbox.clear();
     }
   }
 

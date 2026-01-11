@@ -19,7 +19,7 @@ class ClientConfigTest {
 
     assertEquals("https://smtp.vaultsandbox.com", config.getBaseUrl());
     assertEquals("test-key", config.getApiKey());
-    assertEquals(StrategyType.AUTO, config.getStrategy());
+    assertEquals(StrategyType.SSE, config.getStrategy());
     assertEquals(Duration.ofSeconds(30), config.getHttpTimeout());
     assertEquals(Duration.ofSeconds(30), config.getWaitTimeout());
     assertEquals(3, config.getMaxRetries());
@@ -30,7 +30,7 @@ class ClientConfigTest {
   void testDefaultSseConfiguration() {
     ClientConfig config = ClientConfig.builder().apiKey("test-key").build();
 
-    assertEquals(Duration.ofSeconds(5), config.getSseReconnectInterval());
+    assertEquals(Duration.ofSeconds(2), config.getSseReconnectInterval());
     assertEquals(10, config.getSseMaxReconnectAttempts());
   }
 

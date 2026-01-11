@@ -45,13 +45,6 @@ public interface DeliveryStrategy extends Closeable {
    */
   Subscription subscribe(Inbox inbox, Consumer<Email> callback);
 
-  /**
-   * Check if this strategy supports the current environment.
-   *
-   * @return true if strategy is available
-   */
-  boolean isSupported();
-
   @Override
   void close();
 }

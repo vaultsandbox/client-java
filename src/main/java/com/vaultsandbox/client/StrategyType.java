@@ -9,7 +9,7 @@ package com.vaultsandbox.client;
  */
 public enum StrategyType {
   /**
-   * Server-Sent Events strategy.
+   * Server-Sent Events strategy (default).
    *
    * <p>Uses a persistent HTTP connection for real-time email notifications. Most efficient for
    * receiving emails with minimal latency.
@@ -22,12 +22,5 @@ public enum StrategyType {
    * <p>Periodically polls the server for new emails. Use this when SSE is not available or blocked
    * by a proxy/firewall.
    */
-  POLLING,
-
-  /**
-   * Automatic strategy selection (default).
-   *
-   * <p>Attempts to use SSE first, falling back to polling if SSE is not available or fails.
-   */
-  AUTO
+  POLLING
 }

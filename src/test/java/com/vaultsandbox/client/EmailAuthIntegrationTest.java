@@ -79,10 +79,6 @@ final class EmailAuthIntegrationTest {
   @AfterAll
   void tearDownClass() {
     if (client != null) {
-      try {
-        client.deleteAllInboxes();
-      } catch (Exception ignored) {
-      }
       client.close();
     }
   }

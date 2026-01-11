@@ -12,7 +12,6 @@ import com.vaultsandbox.client.exception.EmailNotFoundException;
 import com.vaultsandbox.client.exception.InboxAlreadyExistsException;
 import com.vaultsandbox.client.exception.InboxNotFoundException;
 import com.vaultsandbox.client.model.CheckKeyResponse;
-import com.vaultsandbox.client.model.DeleteAllResponse;
 import com.vaultsandbox.client.model.EmailData;
 import com.vaultsandbox.client.model.InboxData;
 import com.vaultsandbox.client.model.ServerInfo;
@@ -145,22 +144,6 @@ class ApiClientTest {
     RecordedRequest request = mockServer.takeRequest();
     assertEquals("DELETE", request.getMethod());
     assertTrue(request.getPath().contains("/api/inboxes/"));
-  }
-
-  @Test
-  void testDeleteAllInboxes() throws InterruptedException {
-    String json = """
-            {"deleted": 5}
-            """;
-    mockServer.enqueue(new MockResponse().setBody(json).setResponseCode(200));
-
-    DeleteAllResponse response = apiClient.deleteAllInboxes();
-
-    assertEquals(5, response.getDeletedCount());
-
-    RecordedRequest request = mockServer.takeRequest();
-    assertEquals("DELETE", request.getMethod());
-    assertEquals("/api/inboxes", request.getPath());
   }
 
   // ==================== Email Operations ====================

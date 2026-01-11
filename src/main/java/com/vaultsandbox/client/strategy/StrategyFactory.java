@@ -22,13 +22,6 @@ public final class StrategyFactory {
     return switch (type) {
       case SSE -> new SseStrategy(httpClient, config);
       case POLLING -> new PollingStrategy(config);
-      case AUTO -> createAutoStrategy(httpClient, config);
     };
-  }
-
-  private static DeliveryStrategy createAutoStrategy(OkHttpClient httpClient, ClientConfig config) {
-    SseStrategy sse = new SseStrategy(httpClient, config);
-    PollingStrategy polling = new PollingStrategy(config);
-    return new AutoStrategy(sse, polling);
   }
 }
