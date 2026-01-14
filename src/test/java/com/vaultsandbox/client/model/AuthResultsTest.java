@@ -163,6 +163,26 @@ class AuthResultsTest {
     assertTrue(validation.getFailed().isEmpty());
   }
 
+  // ==================== Skipped Status Tests ====================
+
+  @Test
+  void testSkippedStatusIsNeutral() {
+    AuthResults results = TestHelpers.createSkippedAuthResults();
+    AuthValidation validation = results.validate();
+
+    // "skipped" status means email auth is disabled for the inbox
+    // All checks should be treated as neutral (not passed, not failed)
+    assertFalse(validation.isFullyAuthenticated(), "Skipped status should not pass");
+    assertFalse(validation.hasSpf(), "SPF with 'skipped' result should not count as passed");
+    assertFalse(validation.hasDkim(), "DKIM with 'skipped' result should not count as passed");
+    assertFalse(validation.hasDmarc(), "DMARC with 'skipped' result should not count as passed");
+    assertFalse(validation.hasReverseDns(), "ReverseDNS with 'skipped' result should not pass");
+
+    // All skipped statuses should be neutral (not in passed or failed list)
+    assertTrue(validation.getPassed().isEmpty(), "Skipped status should not be in passed list");
+    assertTrue(validation.getFailed().isEmpty(), "Skipped status should not be in failed list");
+  }
+
   // ==================== None Status Tests ====================
 
   @Test
@@ -172,19 +192,19 @@ class AuthResultsTest {
 
     // "none" status means the check was not performed or not applicable
     // Should be treated as neutral (not passed, not failed) for SPF/DKIM/DMARC
+    // ReverseDNS with 'none' is treated as failure (not verified)
     assertFalse(validation.isFullyAuthenticated(), "None status should not pass");
     assertFalse(validation.hasSpf(), "SPF with 'none' result should not count as passed");
     assertFalse(validation.hasDkim(), "DKIM with 'none' result should not count as passed");
     assertFalse(validation.hasDmarc(), "DMARC with 'none' result should not count as passed");
-    // ReverseDNS now uses boolean verified - false means not verified (failed)
-    assertFalse(validation.hasReverseDns(), "ReverseDNS not verified should not pass");
+    assertFalse(validation.hasReverseDns(), "ReverseDNS with 'none' result should not pass");
 
     // SPF/DKIM/DMARC none status should NOT be in the failed list (it's neutral)
-    // But ReverseDNS verified=false will be in failed list
+    // But ReverseDNS none will be in failed list
     assertTrue(validation.getPassed().isEmpty(), "None status should not be in passed list");
     assertTrue(
         validation.getFailed().stream().anyMatch(s -> s.contains("ReverseDNS")),
-        "ReverseDNS not verified should be in failed list");
+        "ReverseDNS none should be in failed list");
     assertEquals(1, validation.getFailed().size(), "Only ReverseDNS should be in failed list");
   }
 
@@ -224,7 +244,7 @@ class AuthResultsTest {
     AuthResults results = TestHelpers.createPassingAuthResults();
 
     assertNotNull(results.getReverseDns());
-    assertTrue(results.getReverseDns().isVerified());
+    assertEquals("pass", results.getReverseDns().getResult());
     assertEquals("mail.example.com", results.getReverseDns().getHostname());
     assertEquals("192.0.2.1", results.getReverseDns().getIp());
   }

@@ -163,7 +163,7 @@ class ExportedInboxTest {
     InvalidImportDataException ex =
         assertThrows(InvalidImportDataException.class, exported::validate);
 
-    assertTrue(ex.getErrors().contains("serverSigPk is required"));
+    assertTrue(ex.getErrors().contains("serverSigPk is required for encrypted inboxes"));
   }
 
   @Test
@@ -174,7 +174,7 @@ class ExportedInboxTest {
     InvalidImportDataException ex =
         assertThrows(InvalidImportDataException.class, exported::validate);
 
-    assertTrue(ex.getErrors().contains("secretKey is required"));
+    assertTrue(ex.getErrors().contains("secretKey is required for encrypted inboxes"));
   }
 
   // ==================== Email @ Validation (spec §10.1 step 4) ====================
@@ -330,8 +330,9 @@ class ExportedInboxTest {
     assertTrue(ex.getErrors().contains("emailAddress is required"));
     assertTrue(ex.getErrors().contains("expiresAt is required"));
     assertTrue(ex.getErrors().contains("inboxHash is required"));
-    assertTrue(ex.getErrors().contains("serverSigPk is required"));
-    assertTrue(ex.getErrors().contains("secretKey is required"));
+    // serverSigPk and secretKey are only required for encrypted inboxes (default)
+    assertTrue(ex.getErrors().contains("serverSigPk is required for encrypted inboxes"));
+    assertTrue(ex.getErrors().contains("secretKey is required for encrypted inboxes"));
   }
 
   @Test

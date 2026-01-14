@@ -145,11 +145,22 @@ public final class VaultSandboxClient implements Closeable {
    */
   public Inbox createInbox(CreateInboxOptions options) {
     log.debug("Creating new inbox");
-    Keypair keypair = keypairGenerator.generate();
-    String publicKeyB64 = keypair.getPublicKeyBase64Url();
+
+    // Determine if this inbox needs encryption
+    // If encryption is explicitly "plain", we don't need a keypair
+    boolean needsKeypair = !"plain".equals(options.getEncryption());
+
+    Keypair keypair = needsKeypair ? keypairGenerator.generate() : null;
+    String publicKeyB64 = keypair != null ? keypair.getPublicKeyBase64Url() : null;
 
     Long ttlSeconds = options.getTtl() != null ? options.getTtl().getSeconds() : null;
-    InboxData data = apiClient.createInbox(publicKeyB64, ttlSeconds, options.getEmailAddress());
+    InboxData data =
+        apiClient.createInbox(
+            publicKeyB64,
+            ttlSeconds,
+            options.getEmailAddress(),
+            options.getEmailAuth(),
+            options.getEncryption());
 
     Inbox inbox =
         new Inbox(
@@ -161,7 +172,7 @@ public final class VaultSandboxClient implements Closeable {
             deliveryStrategy,
             config.getWaitTimeout());
     inboxes.put(inbox.getEmailAddress(), inbox);
-    log.debug("Inbox created: {}", inbox.getEmailAddress());
+    log.debug("Inbox created: {} (encrypted={})", inbox.getEmailAddress(), data.isEncrypted());
     return inbox;
   }
 
@@ -297,9 +308,12 @@ public final class VaultSandboxClient implements Closeable {
     exported.setEmailAddress(inbox.getEmailAddress());
     exported.setExpiresAt(inbox.getExpiresAt().toString());
     exported.setInboxHash(inbox.getHash());
-    exported.setServerSigPk(inbox.getServerSigPk());
-    // Per spec §9.4: public key is NOT included (derived from secret key)
-    exported.setSecretKey(Base64Url.encode(inbox.getKeypair().getSecretKey()));
+    exported.setEncrypted(inbox.isEncrypted());
+    if (inbox.isEncrypted()) {
+      exported.setServerSigPk(inbox.getServerSigPk());
+      // Per spec §9.4: public key is NOT included (derived from secret key)
+      exported.setSecretKey(Base64Url.encode(inbox.getKeypair().getSecretKey()));
+    }
     exported.setExportedAt(Instant.now().toString());
     return exported;
   }
@@ -375,11 +389,14 @@ public final class VaultSandboxClient implements Closeable {
       throw new InvalidImportDataException("Inbox no longer exists on server");
     }
 
-    // Reconstruct keypair per spec §10.2
-    // Public key is derived from secret key, not stored separately
-    byte[] secretKey = Base64Url.decode(data.getSecretKey());
-    byte[] publicKey = data.derivePublicKey();
-    Keypair keypair = new Keypair(publicKey, secretKey);
+    // For encrypted inboxes, reconstruct keypair per spec §10.2
+    Keypair keypair = null;
+    if (data.isEncrypted()) {
+      // Public key is derived from secret key, not stored separately
+      byte[] secretKey = Base64Url.decode(data.getSecretKey());
+      byte[] publicKey = data.derivePublicKey();
+      keypair = new Keypair(publicKey, secretKey);
+    }
 
     // Create inbox object per spec §10.3
     InboxData inboxData = new InboxData();
@@ -387,6 +404,7 @@ public final class VaultSandboxClient implements Closeable {
     inboxData.setExpiresAt(data.getExpiresAt());
     inboxData.setInboxHash(data.getInboxHash());
     inboxData.setServerSigPk(data.getServerSigPk());
+    inboxData.setEncrypted(data.getEncrypted());
 
     Inbox inbox =
         new Inbox(
@@ -398,7 +416,7 @@ public final class VaultSandboxClient implements Closeable {
             deliveryStrategy,
             config.getWaitTimeout());
     inboxes.put(inbox.getEmailAddress(), inbox);
-    log.debug("Inbox imported: {}", inbox.getEmailAddress());
+    log.debug("Inbox imported: {} (encrypted={})", inbox.getEmailAddress(), data.isEncrypted());
 
     return inbox;
   }

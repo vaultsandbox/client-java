@@ -15,7 +15,8 @@ public class AuthResults {
     List<String> passed = new ArrayList<>();
     List<String> failed = new ArrayList<>();
 
-    // SPF - pass is success, fail is failure, softfail/neutral/none/temperror/permerror are neutral
+    // SPF - pass is success, fail is failure, softfail/neutral/none/temperror/permerror/skipped are
+    // neutral
     if (spf != null) {
       String status = spf.getResult();
       if ("pass".equalsIgnoreCase(status)) {
@@ -23,11 +24,11 @@ public class AuthResults {
       } else if ("fail".equalsIgnoreCase(status)) {
         failed.add("SPF: " + status);
       }
-      // softfail, neutral, none, temperror, permerror are treated as neutral (not added to either
-      // list)
+      // softfail, neutral, none, temperror, permerror, skipped are treated as neutral (not added to
+      // either list)
     }
 
-    // DKIM (any passing signature counts) - none is neutral
+    // DKIM (any passing signature counts) - none/skipped are neutral
     if (dkim != null && !dkim.isEmpty()) {
       boolean anyPass = dkim.stream().anyMatch(d -> "pass".equalsIgnoreCase(d.getResult()));
       boolean anyFail = dkim.stream().anyMatch(d -> "fail".equalsIgnoreCase(d.getResult()));
@@ -36,10 +37,10 @@ public class AuthResults {
       } else if (anyFail) {
         failed.add("DKIM: fail");
       }
-      // If all are 'none', treat as neutral (not added to either list)
+      // If all are 'none' or 'skipped', treat as neutral (not added to either list)
     }
 
-    // DMARC - pass is success, fail is failure, none is neutral
+    // DMARC - pass is success, fail is failure, none/skipped are neutral
     if (dmarc != null) {
       String status = dmarc.getResult();
       if ("pass".equalsIgnoreCase(status)) {
@@ -47,16 +48,19 @@ public class AuthResults {
       } else if ("fail".equalsIgnoreCase(status)) {
         failed.add("DMARC: " + status);
       }
-      // 'none' is treated as neutral (not added to either list)
+      // 'none' and 'skipped' are treated as neutral (not added to either list)
     }
 
-    // Reverse DNS - uses verified boolean
+    // Reverse DNS - pass is success, fail/none are failure, skipped is neutral
     if (reverseDns != null) {
-      if (reverseDns.isVerified()) {
+      String status = reverseDns.getResult();
+      if ("pass".equalsIgnoreCase(status)) {
         passed.add("ReverseDNS");
-      } else {
-        failed.add("ReverseDNS: not verified");
+      } else if (!"skipped".equalsIgnoreCase(status)) {
+        // fail and none are treated as failures
+        failed.add("ReverseDNS: " + (status != null ? status : "not verified"));
       }
+      // 'skipped' is treated as neutral (not added to either list)
     }
 
     return new AuthValidation(passed, failed);

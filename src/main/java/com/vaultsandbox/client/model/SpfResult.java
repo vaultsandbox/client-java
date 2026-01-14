@@ -23,4 +23,13 @@ public class SpfResult {
   public String getDetails() {
     return details;
   }
+
+  /**
+   * Convenience method that returns true if the result is 'pass'.
+   *
+   * @return true if result equals "pass" (case-insensitive)
+   */
+  public boolean isVerified() {
+    return "pass".equalsIgnoreCase(result);
+  }
 }

@@ -218,9 +218,9 @@ final class EmailAuthIntegrationTest {
     }
 
     @Test
-    @DisplayName("ReverseDNS uses 'verified' boolean not 'status' string")
+    @DisplayName("ReverseDNS uses 'result' string not 'verified' boolean")
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
-    void testReverseDnsVerifiedField() throws Exception {
+    void testReverseDnsResultField() throws Exception {
       inbox = client.createInbox();
       sendTestEmail(inbox.getEmailAddress(), null);
 
@@ -228,7 +228,7 @@ final class EmailAuthIntegrationTest {
       AuthResults auth = email.getAuthResults();
 
       assertNotNull(auth.getReverseDns(), "ReverseDNS result should be present");
-      assertTrue(auth.getReverseDns().isVerified(), "ReverseDNS should be verified");
+      assertEquals("pass", auth.getReverseDns().getResult(), "ReverseDNS result should be 'pass'");
       assertNotNull(auth.getReverseDns().getHostname(), "Hostname should be present");
       assertNotNull(auth.getReverseDns().getIp(), "IP should be present");
     }
@@ -454,13 +454,13 @@ final class EmailAuthIntegrationTest {
     }
 
     @Test
-    @DisplayName("Reverse DNS not verified is detected correctly")
+    @DisplayName("Reverse DNS fail is detected correctly")
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
-    void testReverseDnsNotVerified() throws Exception {
+    void testReverseDnsFail() throws Exception {
       inbox = client.createInbox();
 
       Map<String, Object> auth = new HashMap<>();
-      auth.put("reverseDns", false);
+      auth.put("reverseDns", "fail");
 
       sendTestEmail(inbox.getEmailAddress(), auth);
 
@@ -472,7 +472,8 @@ final class EmailAuthIntegrationTest {
       assertTrue(
           validation.getFailed().stream().anyMatch(s -> s.contains("ReverseDNS")),
           "ReverseDNS failure should be in failed list");
-      assertFalse(authResults.getReverseDns().isVerified(), "ReverseDNS should not be verified");
+      assertEquals(
+          "fail", authResults.getReverseDns().getResult(), "ReverseDNS result should be 'fail'");
     }
   }
 
@@ -502,7 +503,7 @@ final class EmailAuthIntegrationTest {
       auth.put("spf", "fail");
       auth.put("dkim", "fail");
       auth.put("dmarc", "fail");
-      auth.put("reverseDns", false);
+      auth.put("reverseDns", "fail");
 
       sendTestEmail(inbox.getEmailAddress(), auth);
 
@@ -528,7 +529,7 @@ final class EmailAuthIntegrationTest {
       auth.put("spf", "softfail");
       auth.put("dkim", "pass");
       auth.put("dmarc", "pass");
-      auth.put("reverseDns", true);
+      auth.put("reverseDns", "pass");
 
       sendTestEmail(inbox.getEmailAddress(), auth);
 
@@ -555,7 +556,7 @@ final class EmailAuthIntegrationTest {
       auth.put("spf", "pass");
       auth.put("dkim", "pass");
       auth.put("dmarc", "fail");
-      auth.put("reverseDns", true);
+      auth.put("reverseDns", "pass");
 
       sendTestEmail(inbox.getEmailAddress(), auth);
 

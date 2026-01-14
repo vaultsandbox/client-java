@@ -23,4 +23,13 @@ public class DkimResult {
   public String getSignature() {
     return signature;
   }
+
+  /**
+   * Convenience method that returns true if the result is 'pass'.
+   *
+   * @return true if result equals "pass" (case-insensitive)
+   */
+  public boolean isVerified() {
+    return "pass".equalsIgnoreCase(result);
+  }
 }

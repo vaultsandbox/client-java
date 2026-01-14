@@ -9,7 +9,7 @@
 # VaultSandbox Java Client
 
 [![CI](https://github.com/vaultsandbox/client-java/actions/workflows/ci.yml/badge.svg)](https://github.com/vaultsandbox/client-java/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Java](https://img.shields.io/badge/java-%3E%3D21-blue.svg)](https://openjdk.org/)
 
 **Production-like email testing. Self-hosted & secure.**
@@ -46,7 +46,7 @@ Stop mocking your email stack. If your app sends real emails in production, it m
 
 ```groovy
 dependencies {
-    testImplementation 'com.vaultsandbox:client:0.6.1'
+    testImplementation 'com.vaultsandbox:client:0.7.0'
 }
 ```
 
@@ -56,7 +56,7 @@ dependencies {
 <dependency>
     <groupId>com.vaultsandbox</groupId>
     <artifactId>client</artifactId>
-    <version>0.6.1</version>
+    <version>0.7.0</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -593,4 +593,4 @@ Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTIN
 
 ## License
 
-MIT — see [LICENSE](LICENSE) for details.
+Apache 2.0 — see [LICENSE](LICENSE) for details.

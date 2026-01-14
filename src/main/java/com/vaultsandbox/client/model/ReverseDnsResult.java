@@ -1,14 +1,19 @@
 package com.vaultsandbox.client.model;
 
 public class ReverseDnsResult {
-  private boolean verified;
+  private String result;
   private String ip;
   private String hostname;
 
   public ReverseDnsResult() {}
 
-  public boolean isVerified() {
-    return verified;
+  /**
+   * Returns the reverse DNS check result.
+   *
+   * @return the result status: "pass", "fail", "none", or "skipped"
+   */
+  public String getResult() {
+    return result;
   }
 
   public String getIp() {
@@ -17,5 +22,14 @@ public class ReverseDnsResult {
 
   public String getHostname() {
     return hostname;
+  }
+
+  /**
+   * Convenience method that returns true if the result is 'pass'.
+   *
+   * @return true if result equals "pass" (case-insensitive)
+   */
+  public boolean isVerified() {
+    return "pass".equalsIgnoreCase(result);
   }
 }

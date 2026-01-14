@@ -75,6 +75,8 @@ public class Inbox {
   private final String inboxHash;
   private final String serverSigPk;
   private final Keypair keypair;
+  private final boolean encrypted;
+  private final boolean emailAuth;
 
   private final ApiClient apiClient;
   private final Decryptor decryptor;
@@ -96,6 +98,8 @@ public class Inbox {
     this.inboxHash = data.getInboxHash();
     this.serverSigPk = data.getServerSigPk();
     this.keypair = keypair;
+    this.encrypted = data.isEncrypted();
+    this.emailAuth = data.getEmailAuth() != null && data.getEmailAuth();
     this.apiClient = apiClient;
     this.decryptor = decryptor;
     this.signatureVerifier = signatureVerifier;
@@ -166,23 +170,32 @@ public class Inbox {
   public String getRawEmail(String emailId) {
     RawEmailData data = apiClient.getRawEmail(emailAddress, emailId);
 
-    // If raw content is directly available, return it
+    // If raw content is directly available (legacy), return it
     if (data.getRawContent() != null) {
       return data.getRawContent();
     }
 
-    // Otherwise, decrypt the encrypted raw content
-    EncryptedPayload encryptedPayload = data.getEncryptedRaw();
-    if (encryptedPayload != null) {
-      if (!signatureVerifier.verify(encryptedPayload, serverSigPk)) {
-        throw new SignatureVerificationException();
-      }
-      byte[] rawBytes = decryptor.decrypt(encryptedPayload, keypair.getSecretKey());
-      String base64Content = new String(rawBytes, StandardCharsets.UTF_8);
+    if (data.isEncrypted()) {
+      // Encrypted inbox: decrypt the encrypted raw content
+      EncryptedPayload encryptedPayload = data.getEncryptedRaw();
+      if (encryptedPayload != null) {
+        if (!signatureVerifier.verify(encryptedPayload, serverSigPk)) {
+          throw new SignatureVerificationException();
+        }
+        byte[] rawBytes = decryptor.decrypt(encryptedPayload, keypair.getSecretKey());
+        String base64Content = new String(rawBytes, StandardCharsets.UTF_8);
 
-      // Server always base64 encodes raw email before encryption, decode it
-      byte[] decoded = java.util.Base64.getDecoder().decode(base64Content);
-      return new String(decoded, StandardCharsets.UTF_8);
+        // Server base64 encodes raw email before encryption, decode it
+        byte[] decoded = java.util.Base64.getDecoder().decode(base64Content);
+        return new String(decoded, StandardCharsets.UTF_8);
+      }
+    } else {
+      // Plain inbox: decode Base64
+      String rawB64 = data.getRaw();
+      if (rawB64 != null) {
+        byte[] decoded = java.util.Base64.getDecoder().decode(rawB64);
+        return new String(decoded, StandardCharsets.UTF_8);
+      }
     }
 
     return null;
@@ -240,28 +253,45 @@ public class Inbox {
   }
 
   private Email decryptEmail(EmailData data) {
-    // Decrypt metadata (always present - contains from/subject/to)
     DecryptedEmailMetadata metadata = null;
-    EncryptedPayload metadataPayload = data.getEncryptedMetadata();
-    if (metadataPayload != null) {
-      if (!signatureVerifier.verify(metadataPayload, serverSigPk)) {
-        throw new SignatureVerificationException();
-      }
-      byte[] metadataBytes = decryptor.decrypt(metadataPayload, keypair.getSecretKey());
-      String metadataJson = new String(metadataBytes, StandardCharsets.UTF_8);
-      metadata = gson.fromJson(metadataJson, DecryptedEmailMetadata.class);
-    }
-
-    // Decrypt content
     DecryptedEmailContent content = null;
-    EncryptedPayload contentPayload = data.getEncryptedParsed();
-    if (contentPayload != null) {
-      if (!signatureVerifier.verify(contentPayload, serverSigPk)) {
-        throw new SignatureVerificationException();
+
+    if (data.isEncrypted()) {
+      // Encrypted email: decrypt metadata and content
+      EncryptedPayload metadataPayload = data.getEncryptedMetadata();
+      if (metadataPayload != null) {
+        if (!signatureVerifier.verify(metadataPayload, serverSigPk)) {
+          throw new SignatureVerificationException();
+        }
+        byte[] metadataBytes = decryptor.decrypt(metadataPayload, keypair.getSecretKey());
+        String metadataJson = new String(metadataBytes, StandardCharsets.UTF_8);
+        metadata = gson.fromJson(metadataJson, DecryptedEmailMetadata.class);
       }
-      byte[] contentBytes = decryptor.decrypt(contentPayload, keypair.getSecretKey());
-      String contentJson = new String(contentBytes, StandardCharsets.UTF_8);
-      content = gson.fromJson(contentJson, DecryptedEmailContent.class);
+
+      EncryptedPayload contentPayload = data.getEncryptedParsed();
+      if (contentPayload != null) {
+        if (!signatureVerifier.verify(contentPayload, serverSigPk)) {
+          throw new SignatureVerificationException();
+        }
+        byte[] contentBytes = decryptor.decrypt(contentPayload, keypair.getSecretKey());
+        String contentJson = new String(contentBytes, StandardCharsets.UTF_8);
+        content = gson.fromJson(contentJson, DecryptedEmailContent.class);
+      }
+    } else {
+      // Plain email: decode Base64
+      String metadataB64 = data.getMetadata();
+      if (metadataB64 != null) {
+        byte[] metadataBytes = java.util.Base64.getDecoder().decode(metadataB64);
+        String metadataJson = new String(metadataBytes, StandardCharsets.UTF_8);
+        metadata = gson.fromJson(metadataJson, DecryptedEmailMetadata.class);
+      }
+
+      String parsedB64 = data.getParsed();
+      if (parsedB64 != null) {
+        byte[] contentBytes = java.util.Base64.getDecoder().decode(parsedB64);
+        String contentJson = new String(contentBytes, StandardCharsets.UTF_8);
+        content = gson.fromJson(contentJson, DecryptedEmailContent.class);
+      }
     }
 
     return new Email(data, metadata, content, this);
@@ -269,14 +299,26 @@ public class Inbox {
 
   private EmailMetadata decryptToMetadata(EmailData data) {
     DecryptedEmailMetadata metadata = null;
-    EncryptedPayload metadataPayload = data.getEncryptedMetadata();
-    if (metadataPayload != null) {
-      if (!signatureVerifier.verify(metadataPayload, serverSigPk)) {
-        throw new SignatureVerificationException();
+
+    if (data.isEncrypted()) {
+      // Encrypted email: decrypt metadata
+      EncryptedPayload metadataPayload = data.getEncryptedMetadata();
+      if (metadataPayload != null) {
+        if (!signatureVerifier.verify(metadataPayload, serverSigPk)) {
+          throw new SignatureVerificationException();
+        }
+        byte[] metadataBytes = decryptor.decrypt(metadataPayload, keypair.getSecretKey());
+        String metadataJson = new String(metadataBytes, StandardCharsets.UTF_8);
+        metadata = gson.fromJson(metadataJson, DecryptedEmailMetadata.class);
       }
-      byte[] metadataBytes = decryptor.decrypt(metadataPayload, keypair.getSecretKey());
-      String metadataJson = new String(metadataBytes, StandardCharsets.UTF_8);
-      metadata = gson.fromJson(metadataJson, DecryptedEmailMetadata.class);
+    } else {
+      // Plain email: decode Base64
+      String metadataB64 = data.getMetadata();
+      if (metadataB64 != null) {
+        byte[] metadataBytes = java.util.Base64.getDecoder().decode(metadataB64);
+        String metadataJson = new String(metadataBytes, StandardCharsets.UTF_8);
+        metadata = gson.fromJson(metadataJson, DecryptedEmailMetadata.class);
+      }
     }
 
     return new EmailMetadata(
@@ -322,12 +364,34 @@ public class Inbox {
    * Returns the server's signature public key for this inbox.
    *
    * <p>This is used to verify that emails were encrypted by the server and haven't been tampered
-   * with.
+   * with. Returns {@code null} for plain (unencrypted) inboxes.
    *
-   * @return the server's signature public key (base64url encoded)
+   * @return the server's signature public key (base64url encoded), or {@code null} if plain inbox
    */
   public String getServerSigPk() {
     return serverSigPk;
+  }
+
+  /**
+   * Returns whether this inbox uses encryption.
+   *
+   * <p>Encrypted inboxes use ML-KEM and AES-256-GCM for end-to-end encryption. Plain inboxes store
+   * emails as Base64-encoded JSON without encryption.
+   *
+   * @return {@code true} if encrypted, {@code false} if plain
+   */
+  public boolean isEncrypted() {
+    return encrypted;
+  }
+
+  /**
+   * Returns whether email authentication checks are enabled for this inbox. When false,
+   * SPF/DKIM/DMARC/ReverseDNS checks return 'skipped'.
+   *
+   * @return true if email auth is enabled
+   */
+  public boolean isEmailAuth() {
+    return emailAuth;
   }
 
   Keypair getKeypair() {
@@ -353,9 +417,12 @@ public class Inbox {
     exported.setEmailAddress(emailAddress);
     exported.setExpiresAt(expiresAt.toString());
     exported.setInboxHash(inboxHash);
-    exported.setServerSigPk(serverSigPk);
-    // Per spec §9.4: public key is NOT included (derived from secret key)
-    exported.setSecretKey(Base64Url.encode(keypair.getSecretKey()));
+    exported.setEncrypted(encrypted);
+    if (encrypted) {
+      exported.setServerSigPk(serverSigPk);
+      // Per spec §9.4: public key is NOT included (derived from secret key)
+      exported.setSecretKey(Base64Url.encode(keypair.getSecretKey()));
+    }
     exported.setExportedAt(Instant.now().toString());
     return exported;
   }

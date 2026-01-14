@@ -11,7 +11,7 @@ plugins {
 }
 
 group = 'com.vaultsandbox'
-version = '0.6.1'
+version = '0.7.0'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -24,15 +24,15 @@ repositories {
 
 dependencies {
     // Bouncy Castle for post-quantum crypto (ML-KEM, ML-DSA included in 1.79+)
-    implementation 'org.bouncycastle:bcprov-jdk18on:1.79'
-    implementation 'org.bouncycastle:bcpkix-jdk18on:1.79'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.83'
+    implementation 'org.bouncycastle:bcpkix-jdk18on:1.83'
 
     // OkHttp for HTTP and SSE
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:okhttp-sse:4.12.0'
 
     // Gson for JSON
-    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'com.google.code.gson:gson:2.13.2'
 
     // SLF4J API (compile-time dependency - consumers can bind any implementation)
     api 'org.slf4j:slf4j-api:2.0.16'
@@ -68,6 +68,11 @@ tasks.register('integrationTest', Test) {
     testLogging {
         showStandardStreams = true
         events 'passed', 'skipped', 'failed'
+    }
+
+    // Pass system property to enable disabled tests if specified
+    if (project.hasProperty('runDisabled')) {
+        systemProperty 'junit.jupiter.conditions.deactivate', 'org.junit.*DisabledCondition'
     }
 
     // Integration tests must run after unit tests
@@ -165,8 +170,8 @@ mavenPublishing {
 
         licenses {
             license {
-                name = 'MIT License'
-                url = 'https://opensource.org/licenses/MIT'
+                name = 'Apache License 2.0'
+                url = 'https://www.apache.org/licenses/LICENSE-2.0'
             }
         }
 

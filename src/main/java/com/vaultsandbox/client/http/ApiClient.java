@@ -115,14 +115,28 @@ public class ApiClient {
     return get("/api/check-key", CheckKeyResponse.class);
   }
 
-  public InboxData createInbox(String publicKeyB64, Long ttlSeconds, String emailAddress) {
+  public InboxData createInbox(
+      String publicKeyB64,
+      Long ttlSeconds,
+      String emailAddress,
+      Boolean emailAuth,
+      String encryption) {
     HashMap<String, Object> payload = new HashMap<>();
-    payload.put("clientKemPk", publicKeyB64);
+    // clientKemPk is optional when encryption is "plain" or when server default is plain
+    if (publicKeyB64 != null) {
+      payload.put("clientKemPk", publicKeyB64);
+    }
     if (ttlSeconds != null) {
       payload.put("ttl", ttlSeconds);
     }
     if (emailAddress != null) {
       payload.put("emailAddress", emailAddress);
+    }
+    if (emailAuth != null) {
+      payload.put("emailAuth", emailAuth);
+    }
+    if (encryption != null) {
+      payload.put("encryption", encryption);
     }
     return post("/api/inboxes", payload, InboxData.class);
   }

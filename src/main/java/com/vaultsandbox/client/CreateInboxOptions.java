@@ -23,10 +23,15 @@ import java.time.Duration;
 public final class CreateInboxOptions {
   private final String emailAddress;
   private final Duration ttl;
+  private final Boolean emailAuth;
+  private final String encryption;
 
-  private CreateInboxOptions(String emailAddress, Duration ttl) {
+  private CreateInboxOptions(
+      String emailAddress, Duration ttl, Boolean emailAuth, String encryption) {
     this.emailAddress = emailAddress;
     this.ttl = ttl;
+    this.emailAuth = emailAuth;
+    this.encryption = encryption;
   }
 
   /**
@@ -35,7 +40,25 @@ public final class CreateInboxOptions {
    * @return default options
    */
   public static CreateInboxOptions defaults() {
-    return new CreateInboxOptions(null, null);
+    return new CreateInboxOptions(null, null, null, null);
+  }
+
+  /**
+   * Creates options for a plain (unencrypted) inbox.
+   *
+   * @return options configured for plain inbox
+   */
+  public static CreateInboxOptions plain() {
+    return builder().plain().build();
+  }
+
+  /**
+   * Creates options for an encrypted inbox.
+   *
+   * @return options configured for encrypted inbox
+   */
+  public static CreateInboxOptions encrypted() {
+    return builder().encrypted().build();
   }
 
   /**
@@ -67,10 +90,43 @@ public final class CreateInboxOptions {
     return ttl;
   }
 
+  /**
+   * Returns the email authentication setting, if set.
+   *
+   * <p>When {@code true}, SPF/DKIM/DMARC/PTR checks are enabled for this inbox. When {@code false},
+   * all authentication checks are skipped. When {@code null}, the server default is used.
+   *
+   * @return the email auth setting, or {@code null} if using server default
+   */
+  public Boolean getEmailAuth() {
+    return emailAuth;
+  }
+
+  /**
+   * Returns the encryption setting, if set.
+   *
+   * <p>Values:
+   *
+   * <ul>
+   *   <li>{@code "encrypted"} - Request an encrypted inbox
+   *   <li>{@code "plain"} - Request a plain (unencrypted) inbox
+   *   <li>{@code null} - Use server default based on encryption policy
+   * </ul>
+   *
+   * <p>The server may reject the request if the encryption policy does not allow overrides.
+   *
+   * @return the encryption setting, or {@code null} if using server default
+   */
+  public String getEncryption() {
+    return encryption;
+  }
+
   /** Builder for creating {@link CreateInboxOptions} instances. */
   public static class Builder {
     private String emailAddress;
     private Duration ttl;
+    private Boolean emailAuth;
+    private String encryption;
 
     /**
      * Sets a custom email address for the inbox.
@@ -99,12 +155,68 @@ public final class CreateInboxOptions {
     }
 
     /**
+     * Sets whether email authentication (SPF, DKIM, DMARC, PTR) is enabled for this inbox.
+     *
+     * <p>When {@code true}, authentication checks are performed on incoming emails. When {@code
+     * false}, all checks are skipped and return status 'skipped'. When {@code null} (the default),
+     * the server default is used.
+     *
+     * @param emailAuth true to enable, false to disable, null for server default
+     * @return this builder
+     */
+    public Builder emailAuth(Boolean emailAuth) {
+      this.emailAuth = emailAuth;
+      return this;
+    }
+
+    /**
+     * Sets the encryption mode for this inbox.
+     *
+     * <p>Values:
+     *
+     * <ul>
+     *   <li>{@code "encrypted"} - Request an encrypted inbox (end-to-end encrypted)
+     *   <li>{@code "plain"} - Request a plain inbox (no encryption)
+     *   <li>{@code null} - Use server default based on encryption policy
+     * </ul>
+     *
+     * <p>The server may reject the request if the encryption policy does not allow overrides.
+     *
+     * @param encryption the encryption mode ("encrypted", "plain", or null for server default)
+     * @return this builder
+     */
+    public Builder encryption(String encryption) {
+      this.encryption = encryption;
+      return this;
+    }
+
+    /**
+     * Convenience method to request a plain (unencrypted) inbox.
+     *
+     * @return this builder
+     */
+    public Builder plain() {
+      this.encryption = "plain";
+      return this;
+    }
+
+    /**
+     * Convenience method to request an encrypted inbox.
+     *
+     * @return this builder
+     */
+    public Builder encrypted() {
+      this.encryption = "encrypted";
+      return this;
+    }
+
+    /**
      * Builds the options.
      *
      * @return a new CreateInboxOptions instance
      */
     public CreateInboxOptions build() {
-      return new CreateInboxOptions(emailAddress, ttl);
+      return new CreateInboxOptions(emailAddress, ttl, emailAuth, encryption);
     }
   }
 }

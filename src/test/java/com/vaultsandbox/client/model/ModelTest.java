@@ -11,6 +11,61 @@ class ModelTest {
 
   private static final Gson GSON = new GsonBuilder().create();
 
+  // ==================== InboxData Tests ====================
+
+  @Test
+  void testInboxDataGetters() {
+    String json =
+        """
+        {
+          "emailAddress": "test@vaultsandbox.com",
+          "expiresAt": "2024-01-15T12:00:00Z",
+          "inboxHash": "hash123",
+          "serverSigPk": "sigpk123",
+          "emailAuth": true
+        }
+        """;
+    InboxData inboxData = GSON.fromJson(json, InboxData.class);
+
+    assertEquals("test@vaultsandbox.com", inboxData.getEmailAddress());
+    assertEquals("2024-01-15T12:00:00Z", inboxData.getExpiresAt());
+    assertEquals("hash123", inboxData.getInboxHash());
+    assertEquals("sigpk123", inboxData.getServerSigPk());
+    assertEquals(Boolean.TRUE, inboxData.getEmailAuth());
+  }
+
+  @Test
+  void testInboxDataEmailAuthFalse() {
+    String json = "{\"emailAuth\": false}";
+    InboxData inboxData = GSON.fromJson(json, InboxData.class);
+
+    assertEquals(Boolean.FALSE, inboxData.getEmailAuth());
+  }
+
+  @Test
+  void testInboxDataEmailAuthNull() {
+    String json = "{\"emailAddress\": \"test@example.com\"}";
+    InboxData inboxData = GSON.fromJson(json, InboxData.class);
+
+    assertNull(inboxData.getEmailAuth());
+  }
+
+  @Test
+  void testInboxDataSetters() {
+    InboxData inboxData = new InboxData();
+    inboxData.setEmailAddress("test@example.com");
+    inboxData.setExpiresAt("2024-01-15T12:00:00Z");
+    inboxData.setInboxHash("hash456");
+    inboxData.setServerSigPk("sigpk456");
+    inboxData.setEmailAuth(true);
+
+    assertEquals("test@example.com", inboxData.getEmailAddress());
+    assertEquals("2024-01-15T12:00:00Z", inboxData.getExpiresAt());
+    assertEquals("hash456", inboxData.getInboxHash());
+    assertEquals("sigpk456", inboxData.getServerSigPk());
+    assertEquals(Boolean.TRUE, inboxData.getEmailAuth());
+  }
+
   // ==================== DeleteAllResponse Tests ====================
 
   @Test

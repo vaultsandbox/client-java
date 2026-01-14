@@ -10,6 +10,7 @@ public class ServerInfo {
   private int defaultTtl;
   private boolean sseConsole;
   private List<String> allowedDomains;
+  private String encryptionPolicy;
 
   // Legacy fields for backward compatibility
   private String version;
@@ -58,6 +59,46 @@ public class ServerInfo {
 
   public Limits getLimits() {
     return limits;
+  }
+
+  /**
+   * Returns the server's encryption policy.
+   *
+   * <p>Policy values:
+   *
+   * <ul>
+   *   <li>{@code "always"} - All inboxes are encrypted, no override allowed
+   *   <li>{@code "enabled"} - Default encrypted, can request plain
+   *   <li>{@code "disabled"} - Default plain, can request encrypted
+   *   <li>{@code "never"} - All inboxes are plain, no override allowed
+   * </ul>
+   *
+   * @return the encryption policy, or {@code null} if not specified (defaults to "always" for
+   *     backward compatibility)
+   */
+  public String getEncryptionPolicy() {
+    return encryptionPolicy;
+  }
+
+  /**
+   * Returns whether encryption can be overridden per-inbox.
+   *
+   * @return {@code true} if policy is "enabled" or "disabled"
+   */
+  public boolean canOverrideEncryption() {
+    return "enabled".equals(encryptionPolicy) || "disabled".equals(encryptionPolicy);
+  }
+
+  /**
+   * Returns whether encryption is the default for new inboxes.
+   *
+   * @return {@code true} if policy is "always", "enabled", or not specified
+   */
+  public boolean isDefaultEncrypted() {
+    // Backward compatibility: null/missing means encryption enabled
+    return encryptionPolicy == null
+        || "always".equals(encryptionPolicy)
+        || "enabled".equals(encryptionPolicy);
   }
 
   public static class Limits {

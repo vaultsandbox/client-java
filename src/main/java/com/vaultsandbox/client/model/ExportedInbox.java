@@ -42,6 +42,10 @@ public class ExportedInbox {
 
   private String exportedAt;
 
+  // Whether this inbox is encrypted (true) or plain (false)
+  // Null defaults to true for backward compatibility
+  private Boolean encrypted;
+
   // Size constants per spec Appendix B
   private static final int MLKEM_SECRET_KEY_SIZE = 2400;
   private static final int MLKEM_PUBLIC_KEY_SIZE = 1184;
@@ -52,6 +56,9 @@ public class ExportedInbox {
 
   public void validate() throws InvalidImportDataException {
     List<String> errors = new ArrayList<>();
+
+    // Determine if this is an encrypted inbox (default true for backward compatibility)
+    boolean isEncrypted = encrypted == null || encrypted;
 
     // Step 2 per spec §10.1: Validate version
     if (version != 1) {
@@ -68,11 +75,15 @@ public class ExportedInbox {
     if (inboxHash == null || inboxHash.isBlank()) {
       errors.add("inboxHash is required");
     }
-    if (serverSigPk == null || serverSigPk.isBlank()) {
-      errors.add("serverSigPk is required");
-    }
-    if (secretKey == null || secretKey.isBlank()) {
-      errors.add("secretKey is required");
+
+    // For encrypted inboxes, serverSigPk and secretKey are required
+    if (isEncrypted) {
+      if (serverSigPk == null || serverSigPk.isBlank()) {
+        errors.add("serverSigPk is required for encrypted inboxes");
+      }
+      if (secretKey == null || secretKey.isBlank()) {
+        errors.add("secretKey is required for encrypted inboxes");
+      }
     }
 
     // Step 4 per spec §10.1: Validate emailAddress contains exactly one @
@@ -85,7 +96,7 @@ public class ExportedInbox {
 
     // Step 5 per spec §10.1: Validate inboxHash is non-empty (already checked above)
 
-    // Step 6 per spec §10.1: Validate and decode secretKey
+    // Step 6 per spec §10.1: Validate and decode secretKey (only for encrypted inboxes)
     byte[] sk = null;
     if (secretKey != null && !secretKey.isBlank()) {
       try {
@@ -98,7 +109,7 @@ public class ExportedInbox {
       }
     }
 
-    // Step 7 per spec §10.1: Validate and decode serverSigPk
+    // Step 7 per spec §10.1: Validate and decode serverSigPk (only for encrypted inboxes)
     if (serverSigPk != null && !serverSigPk.isBlank()) {
       try {
         byte[] sigPk = Base64Url.decode(serverSigPk);
@@ -215,5 +226,29 @@ public class ExportedInbox {
 
   public void setExportedAt(String exportedAt) {
     this.exportedAt = exportedAt;
+  }
+
+  /**
+   * Returns whether this inbox is encrypted.
+   *
+   * @return {@code true} if encrypted, {@code false} if plain, {@code null} if not specified
+   */
+  public Boolean getEncrypted() {
+    return encrypted;
+  }
+
+  public void setEncrypted(Boolean encrypted) {
+    this.encrypted = encrypted;
+  }
+
+  /**
+   * Returns whether this inbox uses encryption.
+   *
+   * <p>Defaults to {@code true} for backward compatibility.
+   *
+   * @return {@code true} if encrypted or not specified, {@code false} if explicitly plain
+   */
+  public boolean isEncrypted() {
+    return encrypted == null || encrypted;
   }
 }

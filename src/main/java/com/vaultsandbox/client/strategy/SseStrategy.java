@@ -55,6 +55,9 @@ public class SseStrategy implements DeliveryStrategy {
   private volatile int reconnectAttempts = 0;
   private ScheduledExecutorService reconnectScheduler;
 
+  // Connection generation counter to ignore callbacks from stale connections
+  private volatile long connectionGeneration = 0;
+
   // Track pending futures for waitForEmail calls so we can complete them on failure
   private final Set<CompletableFuture<Email>> pendingFutures = ConcurrentHashMap.newKeySet();
 
@@ -161,6 +164,9 @@ public class SseStrategy implements DeliveryStrategy {
 
   private void reconnect() {
     synchronized (connectionLock) {
+      // Increment generation to invalidate callbacks from the old connection
+      connectionGeneration++;
+
       if (eventSource != null) {
         eventSource.cancel();
         eventSource = null;
@@ -248,6 +254,9 @@ public class SseStrategy implements DeliveryStrategy {
             .header("Accept", "text/event-stream")
             .build();
 
+    // Capture the generation at connection time to detect stale callbacks
+    final long currentGeneration = connectionGeneration;
+
     eventSource =
         EventSources.createFactory(client)
             .newEventSource(
@@ -255,6 +264,14 @@ public class SseStrategy implements DeliveryStrategy {
                 new EventSourceListener() {
                   @Override
                   public void onOpen(EventSource es, Response response) {
+                    // Ignore if this is a stale connection
+                    if (currentGeneration != connectionGeneration) {
+                      log.debug(
+                          "Ignoring onOpen from stale connection (gen {} vs {})",
+                          currentGeneration,
+                          connectionGeneration);
+                      return;
+                    }
                     log.info("SSE connection established");
                     reconnectAttempts = 0; // Reset on successful connection
                     // Trigger sync for all inboxes after reconnect
@@ -263,12 +280,25 @@ public class SseStrategy implements DeliveryStrategy {
 
                   @Override
                   public void onEvent(EventSource es, String id, String type, String data) {
+                    // Ignore if this is a stale connection
+                    if (currentGeneration != connectionGeneration) {
+                      log.debug("Ignoring onEvent from stale connection");
+                      return;
+                    }
                     log.debug("SSE event received: type={}", type);
                     handleEvent(type, data);
                   }
 
                   @Override
                   public void onFailure(EventSource es, Throwable t, Response response) {
+                    // Ignore if this is a stale connection
+                    if (currentGeneration != connectionGeneration) {
+                      log.debug(
+                          "Ignoring onFailure from stale connection (gen {} vs {})",
+                          currentGeneration,
+                          connectionGeneration);
+                      return;
+                    }
                     int code = response != null ? response.code() : 0;
                     log.warn(
                         "SSE connection failed: {} (code={})",
@@ -279,6 +309,11 @@ public class SseStrategy implements DeliveryStrategy {
 
                   @Override
                   public void onClosed(EventSource es) {
+                    // Ignore if this is a stale connection
+                    if (currentGeneration != connectionGeneration) {
+                      log.debug("Ignoring onClosed from stale connection");
+                      return;
+                    }
                     log.info("SSE connection closed");
                     scheduleReconnect();
                   }
@@ -378,7 +413,22 @@ public class SseStrategy implements DeliveryStrategy {
       }
     }
 
-    reconnectScheduler.schedule(this::reconnect, delay, TimeUnit.MILLISECONDS);
+    // Capture generation to check if reconnect is still relevant when scheduled task runs
+    final long scheduledGeneration = connectionGeneration;
+    reconnectScheduler.schedule(
+        () -> {
+          // Skip if we've already reconnected since this was scheduled
+          if (scheduledGeneration != connectionGeneration) {
+            log.debug(
+                "Skipping scheduled reconnect (gen {} vs {})",
+                scheduledGeneration,
+                connectionGeneration);
+            return;
+          }
+          reconnect();
+        },
+        delay,
+        TimeUnit.MILLISECONDS);
   }
 
   private void handlePermanentFailure() {

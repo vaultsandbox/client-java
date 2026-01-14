@@ -63,6 +63,7 @@ public class Main {
         output.put("emailAddress", exported.getEmailAddress());
         output.put("expiresAt", exported.getExpiresAt());
         output.put("inboxHash", exported.getInboxHash());
+        output.put("encrypted", exported.isEncrypted());
         output.put("serverSigPk", exported.getServerSigPk());
         output.put("secretKey", exported.getSecretKey());
         output.put("exportedAt", exported.getExportedAt());

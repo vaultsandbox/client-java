@@ -27,4 +27,13 @@ public class DmarcResult {
   public String getDomain() {
     return domain;
   }
+
+  /**
+   * Convenience method that returns true if the result is 'pass'.
+   *
+   * @return true if result equals "pass" (case-insensitive)
+   */
+  public boolean isVerified() {
+    return "pass".equalsIgnoreCase(result);
+  }
 }

@@ -10,6 +10,10 @@ public class EmailData {
   private EncryptedPayload encryptedMetadata;
   private EncryptedPayload encryptedParsed;
 
+  // Plain (unencrypted) inbox fields - Base64-encoded JSON
+  private String metadata;
+  private String parsed;
+
   // Legacy fields for backward compatibility with test data
   private String from;
   private List<String> to;
@@ -57,5 +61,35 @@ public class EmailData {
 
   public EncryptedPayload getEncryptedParsed() {
     return encryptedParsed;
+  }
+
+  /**
+   * Returns the plain (Base64-encoded JSON) metadata for plain inboxes.
+   *
+   * @return the Base64-encoded metadata JSON, or {@code null} if this is an encrypted email
+   */
+  public String getMetadata() {
+    return metadata;
+  }
+
+  /**
+   * Returns the plain (Base64-encoded JSON) parsed content for plain inboxes.
+   *
+   * @return the Base64-encoded parsed content JSON, or {@code null} if this is an encrypted email
+   */
+  public String getParsed() {
+    return parsed;
+  }
+
+  /**
+   * Returns whether this email is from an encrypted inbox.
+   *
+   * <p>Use field presence to discriminate: encrypted emails have {@code encryptedMetadata}, while
+   * plain emails have {@code metadata}.
+   *
+   * @return {@code true} if encrypted, {@code false} if plain
+   */
+  public boolean isEncrypted() {
+    return encryptedMetadata != null;
   }
 }
