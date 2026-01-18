@@ -8,13 +8,20 @@ import com.vaultsandbox.client.exception.EmailNotFoundException;
 import com.vaultsandbox.client.exception.InboxAlreadyExistsException;
 import com.vaultsandbox.client.exception.InboxNotFoundException;
 import com.vaultsandbox.client.exception.NetworkException;
+import com.vaultsandbox.client.exception.WebhookNotFoundException;
 import com.vaultsandbox.client.model.CheckKeyResponse;
+import com.vaultsandbox.client.model.CreateWebhookRequest;
 import com.vaultsandbox.client.model.DeleteAllResponse;
 import com.vaultsandbox.client.model.EmailData;
 import com.vaultsandbox.client.model.InboxData;
 import com.vaultsandbox.client.model.RawEmailData;
+import com.vaultsandbox.client.model.RotateSecretResponse;
 import com.vaultsandbox.client.model.ServerInfo;
 import com.vaultsandbox.client.model.SyncStatus;
+import com.vaultsandbox.client.model.TestWebhookResponse;
+import com.vaultsandbox.client.model.UpdateWebhookRequest;
+import com.vaultsandbox.client.model.WebhookData;
+import com.vaultsandbox.client.model.WebhookListResponse;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -105,6 +112,10 @@ public class ApiClient {
         });
   }
 
+  public <T> T patch(String path, Object body, Class<T> type) {
+    return executeWithRetry(() -> doPatchWithResponse(path, body, type));
+  }
+
   // ==================== API Endpoints ====================
 
   public ServerInfo getServerInfo() {
@@ -187,6 +198,53 @@ public class ApiClient {
     delete("/api/inboxes/" + urlEncode(emailAddress) + "/emails/" + urlEncode(emailId));
   }
 
+  // ==================== Webhook Endpoints ====================
+
+  public WebhookData createWebhook(String emailAddress, CreateWebhookRequest request) {
+    return post(
+        "/api/inboxes/" + urlEncode(emailAddress) + "/webhooks", request, WebhookData.class);
+  }
+
+  public WebhookListResponse listWebhooks(String emailAddress) {
+    return get("/api/inboxes/" + urlEncode(emailAddress) + "/webhooks", WebhookListResponse.class);
+  }
+
+  public WebhookData getWebhook(String emailAddress, String webhookId) {
+    return get(
+        "/api/inboxes/" + urlEncode(emailAddress) + "/webhooks/" + urlEncode(webhookId),
+        WebhookData.class);
+  }
+
+  public WebhookData updateWebhook(
+      String emailAddress, String webhookId, UpdateWebhookRequest request) {
+    return patch(
+        "/api/inboxes/" + urlEncode(emailAddress) + "/webhooks/" + urlEncode(webhookId),
+        request,
+        WebhookData.class);
+  }
+
+  public void deleteWebhook(String emailAddress, String webhookId) {
+    delete("/api/inboxes/" + urlEncode(emailAddress) + "/webhooks/" + urlEncode(webhookId));
+  }
+
+  public TestWebhookResponse testWebhook(String emailAddress, String webhookId) {
+    return post(
+        "/api/inboxes/" + urlEncode(emailAddress) + "/webhooks/" + urlEncode(webhookId) + "/test",
+        new HashMap<>(),
+        TestWebhookResponse.class);
+  }
+
+  public RotateSecretResponse rotateWebhookSecret(String emailAddress, String webhookId) {
+    return post(
+        "/api/inboxes/"
+            + urlEncode(emailAddress)
+            + "/webhooks/"
+            + urlEncode(webhookId)
+            + "/rotate-secret",
+        new HashMap<>(),
+        RotateSecretResponse.class);
+  }
+
   // ==================== Internal Implementation ====================
 
   private <T> T doGet(String path, Class<T> type) {
@@ -219,6 +277,12 @@ public class ApiClient {
     RequestBody requestBody = RequestBody.create(gson.toJson(body), JSON);
     Request request = new Request.Builder().url(baseUrl + path).patch(requestBody).build();
     executeRequest(request, Void.class);
+  }
+
+  private <T> T doPatchWithResponse(String path, Object body, Class<T> type) {
+    RequestBody requestBody = RequestBody.create(gson.toJson(body), JSON);
+    Request request = new Request.Builder().url(baseUrl + path).patch(requestBody).build();
+    return executeRequest(request, type);
   }
 
   private <T> T executeRequest(Request request, Class<T> type) {
@@ -303,7 +367,9 @@ public class ApiClient {
       case 400 -> throw new ApiException("Bad request: " + body, 400);
       case 401 -> throw new ApiException("Invalid API key", 401);
       case 404 -> {
-        if (body.contains("inbox") || body.contains("Inbox")) {
+        if (body.contains("webhook") || body.contains("Webhook")) {
+          throw new WebhookNotFoundException(extractIdentifier(body));
+        } else if (body.contains("inbox") || body.contains("Inbox")) {
           throw new InboxNotFoundException(extractIdentifier(body));
         } else if (body.contains("email") || body.contains("Email")) {
           throw new EmailNotFoundException(extractIdentifier(body));

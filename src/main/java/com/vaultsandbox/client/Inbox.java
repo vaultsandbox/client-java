@@ -9,7 +9,9 @@ import com.vaultsandbox.client.crypto.SignatureVerifier;
 import com.vaultsandbox.client.exception.InboxNotFoundException;
 import com.vaultsandbox.client.exception.SignatureVerificationException;
 import com.vaultsandbox.client.exception.TimeoutException;
+import com.vaultsandbox.client.exception.WebhookNotFoundException;
 import com.vaultsandbox.client.http.ApiClient;
+import com.vaultsandbox.client.model.CreateWebhookRequest;
 import com.vaultsandbox.client.model.DecryptedEmailContent;
 import com.vaultsandbox.client.model.DecryptedEmailMetadata;
 import com.vaultsandbox.client.model.EmailData;
@@ -18,7 +20,13 @@ import com.vaultsandbox.client.model.EncryptedPayload;
 import com.vaultsandbox.client.model.ExportedInbox;
 import com.vaultsandbox.client.model.InboxData;
 import com.vaultsandbox.client.model.RawEmailData;
+import com.vaultsandbox.client.model.RotateSecretResponse;
 import com.vaultsandbox.client.model.SyncStatus;
+import com.vaultsandbox.client.model.TestWebhookResponse;
+import com.vaultsandbox.client.model.UpdateWebhookRequest;
+import com.vaultsandbox.client.model.WebhookData;
+import com.vaultsandbox.client.model.WebhookEventType;
+import com.vaultsandbox.client.model.WebhookListResponse;
 import com.vaultsandbox.client.strategy.DeliveryStrategy;
 import com.vaultsandbox.client.strategy.EmailFilter;
 import com.vaultsandbox.client.strategy.Subscription;
@@ -425,6 +433,120 @@ public class Inbox {
     }
     exported.setExportedAt(Instant.now().toString());
     return exported;
+  }
+
+  // ==================== Webhook Methods ====================
+
+  /**
+   * Creates a webhook for this inbox.
+   *
+   * <p>The webhook will receive events only for this inbox.
+   *
+   * @param url the target URL (HTTPS required in production)
+   * @param events the event types to subscribe to
+   * @return the created webhook (includes the signing secret)
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
+   */
+  public WebhookData createWebhook(String url, List<WebhookEventType> events) {
+    CreateWebhookRequest request = new CreateWebhookRequest(url, events);
+    return apiClient.createWebhook(emailAddress, request);
+  }
+
+  /**
+   * Creates a webhook for this inbox using a request builder.
+   *
+   * <p>This method allows setting additional options like templates, filters, and descriptions.
+   *
+   * @param request the webhook creation request
+   * @return the created webhook (includes the signing secret)
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
+   */
+  public WebhookData createWebhook(CreateWebhookRequest request) {
+    return apiClient.createWebhook(emailAddress, request);
+  }
+
+  /**
+   * Lists all webhooks for this inbox.
+   *
+   * <p>Note: The {@code secret} field is not included in list responses.
+   *
+   * @return the list of webhooks
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
+   */
+  public List<WebhookData> listWebhooks() {
+    WebhookListResponse response = apiClient.listWebhooks(emailAddress);
+    return response.getWebhooks();
+  }
+
+  /**
+   * Retrieves a webhook by its ID.
+   *
+   * @param webhookId the webhook ID (whk_ prefix)
+   * @return the webhook (includes secret and stats)
+   * @throws WebhookNotFoundException if the webhook does not exist
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
+   */
+  public WebhookData getWebhook(String webhookId) {
+    return apiClient.getWebhook(emailAddress, webhookId);
+  }
+
+  /**
+   * Updates a webhook.
+   *
+   * @param webhookId the webhook ID (whk_ prefix)
+   * @param request the update request
+   * @return the updated webhook
+   * @throws WebhookNotFoundException if the webhook does not exist
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
+   */
+  public WebhookData updateWebhook(String webhookId, UpdateWebhookRequest request) {
+    return apiClient.updateWebhook(emailAddress, webhookId, request);
+  }
+
+  /**
+   * Deletes a webhook.
+   *
+   * @param webhookId the webhook ID (whk_ prefix)
+   * @throws WebhookNotFoundException if the webhook does not exist
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
+   */
+  public void deleteWebhook(String webhookId) {
+    apiClient.deleteWebhook(emailAddress, webhookId);
+  }
+
+  /**
+   * Sends a test event to a webhook endpoint to verify connectivity.
+   *
+   * @param webhookId the webhook ID (whk_ prefix)
+   * @return the test result
+   * @throws WebhookNotFoundException if the webhook does not exist
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
+   */
+  public TestWebhookResponse testWebhook(String webhookId) {
+    return apiClient.testWebhook(emailAddress, webhookId);
+  }
+
+  /**
+   * Rotates a webhook's signing secret.
+   *
+   * <p>A new secret is generated immediately. The old secret remains valid for 1 hour to allow for
+   * gradual migration.
+   *
+   * @param webhookId the webhook ID (whk_ prefix)
+   * @return the new secret and grace period info
+   * @throws WebhookNotFoundException if the webhook does not exist
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
+   */
+  public RotateSecretResponse rotateWebhookSecret(String webhookId) {
+    return apiClient.rotateWebhookSecret(emailAddress, webhookId);
   }
 
   // ==================== Wait Methods ====================
