@@ -20,6 +20,7 @@ class CreateInboxOptionsTest {
     assertNull(options.getTtl());
     assertNull(options.getEmailAuth());
     assertNull(options.getEncryption());
+    assertNull(options.getSpamAnalysis());
   }
 
   @Test
@@ -30,6 +31,7 @@ class CreateInboxOptionsTest {
     assertNull(options.getTtl());
     assertNull(options.getEmailAuth());
     assertNull(options.getEncryption());
+    assertNull(options.getSpamAnalysis());
   }
 
   // ==================== Builder Methods Tests ====================
@@ -176,5 +178,70 @@ class CreateInboxOptionsTest {
     assertEquals(Duration.ofHours(3), options.getTtl());
     assertEquals(Boolean.FALSE, options.getEmailAuth());
     assertEquals("plain", options.getEncryption());
+  }
+
+  // ==================== Spam Analysis Builder Tests ====================
+
+  @Test
+  void testSpamAnalysisEnabledBuilder() {
+    CreateInboxOptions options = CreateInboxOptions.builder().spamAnalysis(true).build();
+
+    assertEquals(Boolean.TRUE, options.getSpamAnalysis());
+  }
+
+  @Test
+  void testSpamAnalysisDisabledBuilder() {
+    CreateInboxOptions options = CreateInboxOptions.builder().spamAnalysis(false).build();
+
+    assertEquals(Boolean.FALSE, options.getSpamAnalysis());
+  }
+
+  @Test
+  void testSpamAnalysisNullBuilder() {
+    CreateInboxOptions options = CreateInboxOptions.builder().spamAnalysis(null).build();
+
+    assertNull(options.getSpamAnalysis());
+  }
+
+  @Test
+  void testSpamAnalysisWithOtherOptions() {
+    CreateInboxOptions options =
+        CreateInboxOptions.builder()
+            .emailAddress("spam-test@example.com")
+            .ttl(Duration.ofMinutes(30))
+            .emailAuth(true)
+            .spamAnalysis(true)
+            .build();
+
+    assertEquals("spam-test@example.com", options.getEmailAddress());
+    assertEquals(Duration.ofMinutes(30), options.getTtl());
+    assertEquals(Boolean.TRUE, options.getEmailAuth());
+    assertEquals(Boolean.TRUE, options.getSpamAnalysis());
+  }
+
+  @Test
+  void testBuilderWithAllFieldsIncludingSpamAnalysis() {
+    CreateInboxOptions options =
+        CreateInboxOptions.builder()
+            .emailAddress("complete@example.com")
+            .ttl(Duration.ofHours(2))
+            .emailAuth(true)
+            .encrypted()
+            .spamAnalysis(true)
+            .build();
+
+    assertEquals("complete@example.com", options.getEmailAddress());
+    assertEquals(Duration.ofHours(2), options.getTtl());
+    assertEquals(Boolean.TRUE, options.getEmailAuth());
+    assertEquals("encrypted", options.getEncryption());
+    assertEquals(Boolean.TRUE, options.getSpamAnalysis());
+  }
+
+  @Test
+  void testPlainInboxWithSpamAnalysisDisabled() {
+    CreateInboxOptions options = CreateInboxOptions.builder().plain().spamAnalysis(false).build();
+
+    assertEquals("plain", options.getEncryption());
+    assertEquals(Boolean.FALSE, options.getSpamAnalysis());
   }
 }

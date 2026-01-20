@@ -25,13 +25,19 @@ public final class CreateInboxOptions {
   private final Duration ttl;
   private final Boolean emailAuth;
   private final String encryption;
+  private final Boolean spamAnalysis;
 
   private CreateInboxOptions(
-      String emailAddress, Duration ttl, Boolean emailAuth, String encryption) {
+      String emailAddress,
+      Duration ttl,
+      Boolean emailAuth,
+      String encryption,
+      Boolean spamAnalysis) {
     this.emailAddress = emailAddress;
     this.ttl = ttl;
     this.emailAuth = emailAuth;
     this.encryption = encryption;
+    this.spamAnalysis = spamAnalysis;
   }
 
   /**
@@ -40,7 +46,7 @@ public final class CreateInboxOptions {
    * @return default options
    */
   public static CreateInboxOptions defaults() {
-    return new CreateInboxOptions(null, null, null, null);
+    return new CreateInboxOptions(null, null, null, null, null);
   }
 
   /**
@@ -121,12 +127,25 @@ public final class CreateInboxOptions {
     return encryption;
   }
 
+  /**
+   * Returns the spam analysis setting, if set.
+   *
+   * <p>When {@code true}, spam analysis is enabled for emails to this inbox. When {@code false},
+   * spam analysis is disabled. When {@code null}, the server default is used.
+   *
+   * @return the spam analysis setting, or {@code null} if using server default
+   */
+  public Boolean getSpamAnalysis() {
+    return spamAnalysis;
+  }
+
   /** Builder for creating {@link CreateInboxOptions} instances. */
   public static class Builder {
     private String emailAddress;
     private Duration ttl;
     private Boolean emailAuth;
     private String encryption;
+    private Boolean spamAnalysis;
 
     /**
      * Sets a custom email address for the inbox.
@@ -211,12 +230,26 @@ public final class CreateInboxOptions {
     }
 
     /**
+     * Sets whether spam analysis is enabled for this inbox.
+     *
+     * <p>When {@code true}, spam analysis is performed on incoming emails. When {@code false}, spam
+     * analysis is skipped. When {@code null} (the default), the server default is used.
+     *
+     * @param spamAnalysis true to enable, false to disable, null for server default
+     * @return this builder
+     */
+    public Builder spamAnalysis(Boolean spamAnalysis) {
+      this.spamAnalysis = spamAnalysis;
+      return this;
+    }
+
+    /**
      * Builds the options.
      *
      * @return a new CreateInboxOptions instance
      */
     public CreateInboxOptions build() {
-      return new CreateInboxOptions(emailAddress, ttl, emailAuth, encryption);
+      return new CreateInboxOptions(emailAddress, ttl, emailAuth, encryption, spamAnalysis);
     }
   }
 }

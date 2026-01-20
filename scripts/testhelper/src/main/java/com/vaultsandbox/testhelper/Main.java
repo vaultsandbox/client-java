@@ -64,6 +64,7 @@ public class Main {
         output.put("expiresAt", exported.getExpiresAt());
         output.put("inboxHash", exported.getInboxHash());
         output.put("encrypted", exported.isEncrypted());
+        output.put("emailAuth", exported.isEmailAuth());
         output.put("serverSigPk", exported.getServerSigPk());
         output.put("secretKey", exported.getSecretKey());
         output.put("exportedAt", exported.getExportedAt());

@@ -160,7 +160,8 @@ public final class VaultSandboxClient implements Closeable {
             ttlSeconds,
             options.getEmailAddress(),
             options.getEmailAuth(),
-            options.getEncryption());
+            options.getEncryption(),
+            options.getSpamAnalysis());
 
     Inbox inbox =
         new Inbox(
@@ -405,6 +406,7 @@ public final class VaultSandboxClient implements Closeable {
     inboxData.setInboxHash(data.getInboxHash());
     inboxData.setServerSigPk(data.getServerSigPk());
     inboxData.setEncrypted(data.getEncrypted());
+    inboxData.setEmailAuth(data.getEmailAuth());
 
     Inbox inbox =
         new Inbox(

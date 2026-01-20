@@ -11,6 +11,7 @@ public class ServerInfo {
   private boolean sseConsole;
   private List<String> allowedDomains;
   private String encryptionPolicy;
+  private boolean spamAnalysisEnabled;
 
   // Legacy fields for backward compatibility
   private String version;
@@ -78,6 +79,18 @@ public class ServerInfo {
    */
   public String getEncryptionPolicy() {
     return encryptionPolicy;
+  }
+
+  /**
+   * Returns whether spam analysis (Rspamd) is enabled on this server.
+   *
+   * <p>When enabled, incoming emails can be analyzed for spam. Individual inboxes may still opt out
+   * of spam analysis when creating the inbox.
+   *
+   * @return {@code true} if spam analysis is available on the server
+   */
+  public boolean isSpamAnalysisEnabled() {
+    return spamAnalysisEnabled;
   }
 
   /**

@@ -30,6 +30,13 @@
         <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
     </Match>
 
+    <!-- Exclude NP_BOOLEAN_RETURN_NULL for Email.isSpam() - null intentionally means "unknown" -->
+    <Match>
+        <Class name="com.vaultsandbox.client.Email"/>
+        <Method name="isSpam"/>
+        <Bug pattern="NP_BOOLEAN_RETURN_NULL"/>
+    </Match>
+
     <!-- Exclude strategy classes - internal implementation -->
     <Match>
         <Package name="com.vaultsandbox.client.strategy"/>

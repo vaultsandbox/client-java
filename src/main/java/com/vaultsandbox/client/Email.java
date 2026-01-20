@@ -4,6 +4,8 @@ import com.vaultsandbox.client.model.AuthResults;
 import com.vaultsandbox.client.model.DecryptedEmailContent;
 import com.vaultsandbox.client.model.DecryptedEmailMetadata;
 import com.vaultsandbox.client.model.EmailData;
+import com.vaultsandbox.client.model.SpamAnalysisResult;
+import com.vaultsandbox.client.model.SpamAnalysisStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +48,7 @@ public class Email {
   private final List<Attachment> attachments;
   private final List<String> links;
   private final AuthResults authResults;
+  private final SpamAnalysisResult spamAnalysis;
   private final Map<String, Object> metadata;
 
   private final Inbox inbox;
@@ -83,6 +86,7 @@ public class Email {
               .collect(Collectors.toUnmodifiableList());
       this.links = List.copyOf(content.getLinks());
       this.authResults = content.getAuthResults();
+      this.spamAnalysis = content.getSpamAnalysis();
       this.metadata =
           content.getMetadata() != null && !content.getMetadata().isEmpty()
               ? Map.copyOf(content.getMetadata())
@@ -94,6 +98,7 @@ public class Email {
       this.attachments = List.of();
       this.links = List.of();
       this.authResults = null;
+      this.spamAnalysis = null;
       this.metadata = Map.of();
     }
 
@@ -253,6 +258,48 @@ public class Email {
    */
   public AuthResults getAuthResults() {
     return authResults;
+  }
+
+  /**
+   * Returns spam analysis results.
+   *
+   * <p>Contains the spam score, recommended action, and triggered rules from Rspamd analysis. May
+   * be {@code null} if spam analysis is not available or not enabled.
+   *
+   * @return the spam analysis results, or {@code null} if not available
+   * @see SpamAnalysisResult
+   */
+  public SpamAnalysisResult getSpamAnalysis() {
+    return spamAnalysis;
+  }
+
+  /**
+   * Convenience method to check if this email is classified as spam.
+   *
+   * <p>Returns {@code null} if spam analysis was not performed or did not complete successfully.
+   *
+   * @return {@code true} if the email is spam, {@code false} if not spam, or {@code null} if
+   *     unknown
+   */
+  public Boolean isSpam() {
+    if (spamAnalysis == null || spamAnalysis.getStatus() != SpamAnalysisStatus.ANALYZED) {
+      return null;
+    }
+    return spamAnalysis.isSpam();
+  }
+
+  /**
+   * Convenience method to get the spam score for this email.
+   *
+   * <p>Returns {@code null} if spam analysis was not performed or did not complete successfully.
+   *
+   * @return the spam score, or {@code null} if not analyzed
+   */
+  public Double getSpamScore() {
+    if (spamAnalysis == null || spamAnalysis.getStatus() != SpamAnalysisStatus.ANALYZED) {
+      return null;
+    }
+    return spamAnalysis.getScore();
   }
 
   /**

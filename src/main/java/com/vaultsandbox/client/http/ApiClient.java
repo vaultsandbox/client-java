@@ -131,7 +131,8 @@ public class ApiClient {
       Long ttlSeconds,
       String emailAddress,
       Boolean emailAuth,
-      String encryption) {
+      String encryption,
+      Boolean spamAnalysis) {
     HashMap<String, Object> payload = new HashMap<>();
     // clientKemPk is optional when encryption is "plain" or when server default is plain
     if (publicKeyB64 != null) {
@@ -148,6 +149,9 @@ public class ApiClient {
     }
     if (encryption != null) {
       payload.put("encryption", encryption);
+    }
+    if (spamAnalysis != null) {
+      payload.put("spamAnalysis", spamAnalysis);
     }
     return post("/api/inboxes", payload, InboxData.class);
   }

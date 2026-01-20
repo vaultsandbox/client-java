@@ -9,6 +9,7 @@ import com.vaultsandbox.client.model.AuthResults;
 import com.vaultsandbox.client.model.DecryptedEmailContent;
 import com.vaultsandbox.client.model.EmailData;
 import com.vaultsandbox.client.model.ExportedInbox;
+import com.vaultsandbox.client.model.SpamAnalysisResult;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
@@ -368,5 +369,133 @@ public final class TestHelpers {
                 }
                 """;
     return GSON.fromJson(json, AuthResults.class);
+  }
+
+  // ==================== Spam Analysis Helpers ====================
+
+  /** Create SpamAnalysisResult for a clean (non-spam) email. */
+  public static SpamAnalysisResult createCleanSpamAnalysis() {
+    String json =
+        """
+        {
+          "status": "analyzed",
+          "score": 0.5,
+          "requiredScore": 6.0,
+          "action": "no action",
+          "isSpam": false,
+          "symbols": [
+            {"name": "DKIM_SIGNED", "score": -0.1, "description": "Valid DKIM signature"},
+            {"name": "SPF_ALLOW", "score": -0.2, "description": "SPF passed"}
+          ],
+          "processingTimeMs": 32
+        }
+        """;
+    return GSON.fromJson(json, SpamAnalysisResult.class);
+  }
+
+  /** Create SpamAnalysisResult for a spam email. */
+  public static SpamAnalysisResult createSpamAnalysis() {
+    String json =
+        """
+        {
+          "status": "analyzed",
+          "score": 12.7,
+          "requiredScore": 6.0,
+          "action": "reject",
+          "isSpam": true,
+          "symbols": [
+            {"name": "RCVD_IN_SBL", "score": 6.5, "description": "Sender IP in Spamhaus blocklist"},
+            {"name": "FORGED_SENDER", "score": 3.0, "description": "Sender address appears forged"},
+            {"name": "SUSPICIOUS_URL", "score": 2.5, "options": ["http://malicious.example"]}
+          ],
+          "processingTimeMs": 78
+        }
+        """;
+    return GSON.fromJson(json, SpamAnalysisResult.class);
+  }
+
+  /** Create SpamAnalysisResult for a suspicious (but not spam) email. */
+  public static SpamAnalysisResult createSuspiciousSpamAnalysis() {
+    String json =
+        """
+        {
+          "status": "analyzed",
+          "score": 4.5,
+          "requiredScore": 6.0,
+          "action": "add header",
+          "isSpam": false,
+          "symbols": [
+            {"name": "MISSING_HEADERS", "score": 2.0},
+            {"name": "SUSPICIOUS_LINK", "score": 2.5}
+          ],
+          "processingTimeMs": 45
+        }
+        """;
+    return GSON.fromJson(json, SpamAnalysisResult.class);
+  }
+
+  /** Create SpamAnalysisResult with skipped status. */
+  public static SpamAnalysisResult createSkippedSpamAnalysis() {
+    String json =
+        """
+        {
+          "status": "skipped",
+          "info": "Spam analysis disabled for this inbox"
+        }
+        """;
+    return GSON.fromJson(json, SpamAnalysisResult.class);
+  }
+
+  /** Create SpamAnalysisResult with error status. */
+  public static SpamAnalysisResult createErrorSpamAnalysis() {
+    String json =
+        """
+        {
+          "status": "error",
+          "processingTimeMs": 5023,
+          "info": "Rspamd request timed out after 5000ms"
+        }
+        """;
+    return GSON.fromJson(json, SpamAnalysisResult.class);
+  }
+
+  /**
+   * Create DecryptedEmailContent with spam analysis results.
+   *
+   * @param text the plain text body
+   * @param html the HTML body
+   * @param spamAnalysis the spam analysis result
+   * @return DecryptedEmailContent with specified spam analysis
+   */
+  public static DecryptedEmailContent createDecryptedContentWithSpamAnalysis(
+      String text, String html, SpamAnalysisResult spamAnalysis) {
+    java.util.HashMap<String, Object> map = new java.util.HashMap<>();
+    map.put("text", text != null ? text : "");
+    map.put("html", html != null ? html : "");
+    map.put("headers", Collections.emptyMap());
+    map.put("attachments", Collections.emptyList());
+    map.put("links", Collections.emptyList());
+    if (spamAnalysis != null) {
+      String spamJson = GSON.toJson(spamAnalysis);
+      map.put("spamAnalysis", GSON.fromJson(spamJson, Map.class));
+    }
+    String json = GSON.toJson(map);
+    return GSON.fromJson(json, DecryptedEmailContent.class);
+  }
+
+  /**
+   * Create a test Email with spam analysis results.
+   *
+   * @param from the sender email address
+   * @param subject the email subject
+   * @param spamAnalysis the spam analysis result
+   * @return a test Email object with spam analysis
+   */
+  public static Email createTestEmailWithSpamAnalysis(
+      String from, String subject, SpamAnalysisResult spamAnalysis) {
+    EmailData emailData = createEmailData("email-" + System.nanoTime(), from, subject);
+    DecryptedEmailContent content =
+        createDecryptedContentWithSpamAnalysis("Email body", null, spamAnalysis);
+    return new Email(emailData, null, content, null);
   }
 }

@@ -25,6 +25,7 @@ public class DecryptedEmailContent {
   private List<String> links;
 
   private AuthResults authResults;
+  private SpamAnalysisResult spamAnalysis;
 
   private Map<String, Object> metadata;
 
@@ -52,6 +53,15 @@ public class DecryptedEmailContent {
 
   public AuthResults getAuthResults() {
     return authResults;
+  }
+
+  /**
+   * Returns spam analysis results for this email.
+   *
+   * @return the spam analysis result, or {@code null} if not available
+   */
+  public SpamAnalysisResult getSpamAnalysis() {
+    return spamAnalysis;
   }
 
   /**

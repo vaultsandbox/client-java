@@ -426,6 +426,7 @@ public class Inbox {
     exported.setExpiresAt(expiresAt.toString());
     exported.setInboxHash(inboxHash);
     exported.setEncrypted(encrypted);
+    exported.setEmailAuth(emailAuth);
     if (encrypted) {
       exported.setServerSigPk(serverSigPk);
       // Per spec §9.4: public key is NOT included (derived from secret key)
