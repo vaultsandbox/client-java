@@ -124,7 +124,8 @@ class ApiClientTest {
             """;
     mockServer.enqueue(new MockResponse().setBody(json).setResponseCode(201));
 
-    InboxData inbox = apiClient.createInbox("testPublicKeyBase64", null, null, null, null, null);
+    InboxData inbox =
+        apiClient.createInbox("testPublicKeyBase64", null, null, null, null, null, null);
 
     assertNotNull(inbox);
     assertEquals("test123@vaultsandbox.com", inbox.getEmailAddress());
@@ -322,7 +323,7 @@ class ApiClientTest {
 
     assertThrows(
         InboxAlreadyExistsException.class,
-        () -> apiClient.createInbox("testPublicKeyBase64", null, null, null, null, null));
+        () -> apiClient.createInbox("testPublicKeyBase64", null, null, null, null, null, null));
   }
 
   @Test
@@ -333,7 +334,7 @@ class ApiClientTest {
     ApiException ex =
         assertThrows(
             ApiException.class,
-            () -> apiClient.createInbox("testPublicKeyBase64", null, null, null, null, null));
+            () -> apiClient.createInbox("testPublicKeyBase64", null, null, null, null, null, null));
     assertEquals(400, ex.getStatusCode());
   }
 }

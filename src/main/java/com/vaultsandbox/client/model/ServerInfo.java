@@ -12,6 +12,7 @@ public class ServerInfo {
   private List<String> allowedDomains;
   private String encryptionPolicy;
   private boolean spamAnalysisEnabled;
+  private boolean chaosEnabled;
 
   // Legacy fields for backward compatibility
   private String version;
@@ -91,6 +92,18 @@ public class ServerInfo {
    */
   public boolean isSpamAnalysisEnabled() {
     return spamAnalysisEnabled;
+  }
+
+  /**
+   * Returns whether chaos engineering is enabled on this server.
+   *
+   * <p>When enabled, inboxes can be configured with chaos settings for testing system resilience.
+   * If {@code false}, all chaos endpoints will return 403 Forbidden.
+   *
+   * @return {@code true} if chaos is available on the server
+   */
+  public boolean isChaosEnabled() {
+    return chaosEnabled;
   }
 
   /**

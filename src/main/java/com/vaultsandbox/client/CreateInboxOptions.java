@@ -1,5 +1,6 @@
 package com.vaultsandbox.client;
 
+import com.vaultsandbox.client.model.ChaosConfig;
 import java.time.Duration;
 
 /**
@@ -26,18 +27,21 @@ public final class CreateInboxOptions {
   private final Boolean emailAuth;
   private final String encryption;
   private final Boolean spamAnalysis;
+  private final ChaosConfig chaos;
 
   private CreateInboxOptions(
       String emailAddress,
       Duration ttl,
       Boolean emailAuth,
       String encryption,
-      Boolean spamAnalysis) {
+      Boolean spamAnalysis,
+      ChaosConfig chaos) {
     this.emailAddress = emailAddress;
     this.ttl = ttl;
     this.emailAuth = emailAuth;
     this.encryption = encryption;
     this.spamAnalysis = spamAnalysis;
+    this.chaos = chaos;
   }
 
   /**
@@ -46,7 +50,7 @@ public final class CreateInboxOptions {
    * @return default options
    */
   public static CreateInboxOptions defaults() {
-    return new CreateInboxOptions(null, null, null, null, null);
+    return new CreateInboxOptions(null, null, null, null, null, null);
   }
 
   /**
@@ -139,6 +143,33 @@ public final class CreateInboxOptions {
     return spamAnalysis;
   }
 
+  /**
+   * Returns the chaos configuration, if set.
+   *
+   * <p>Chaos configuration allows controlled injection of failures and delays into email processing
+   * for this inbox.
+   *
+   * @return a copy of the chaos configuration, or {@code null} if not set
+   */
+  public ChaosConfig getChaos() {
+    return copyChaosConfig(chaos);
+  }
+
+  private static ChaosConfig copyChaosConfig(ChaosConfig original) {
+    if (original == null) {
+      return null;
+    }
+    ChaosConfig copy = new ChaosConfig();
+    copy.setEnabled(original.getEnabled());
+    copy.setExpiresAt(original.getExpiresAt());
+    copy.setLatency(original.getLatency());
+    copy.setConnectionDrop(original.getConnectionDrop());
+    copy.setRandomError(original.getRandomError());
+    copy.setGreylist(original.getGreylist());
+    copy.setBlackhole(original.getBlackhole());
+    return copy;
+  }
+
   /** Builder for creating {@link CreateInboxOptions} instances. */
   public static class Builder {
     private String emailAddress;
@@ -146,6 +177,7 @@ public final class CreateInboxOptions {
     private Boolean emailAuth;
     private String encryption;
     private Boolean spamAnalysis;
+    private ChaosConfig chaos;
 
     /**
      * Sets a custom email address for the inbox.
@@ -244,12 +276,26 @@ public final class CreateInboxOptions {
     }
 
     /**
+     * Sets the chaos configuration for this inbox.
+     *
+     * <p>Chaos configuration allows controlled injection of failures and delays into email
+     * processing. The server must have chaos enabled globally for this to take effect.
+     *
+     * @param chaos the chaos configuration
+     * @return this builder
+     */
+    public Builder chaos(ChaosConfig chaos) {
+      this.chaos = copyChaosConfig(chaos);
+      return this;
+    }
+
+    /**
      * Builds the options.
      *
      * @return a new CreateInboxOptions instance
      */
     public CreateInboxOptions build() {
-      return new CreateInboxOptions(emailAddress, ttl, emailAuth, encryption, spamAnalysis);
+      return new CreateInboxOptions(emailAddress, ttl, emailAuth, encryption, spamAnalysis, chaos);
     }
   }
 }

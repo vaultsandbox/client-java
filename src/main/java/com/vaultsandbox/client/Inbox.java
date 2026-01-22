@@ -11,6 +11,7 @@ import com.vaultsandbox.client.exception.SignatureVerificationException;
 import com.vaultsandbox.client.exception.TimeoutException;
 import com.vaultsandbox.client.exception.WebhookNotFoundException;
 import com.vaultsandbox.client.http.ApiClient;
+import com.vaultsandbox.client.model.ChaosConfig;
 import com.vaultsandbox.client.model.CreateWebhookRequest;
 import com.vaultsandbox.client.model.DecryptedEmailContent;
 import com.vaultsandbox.client.model.DecryptedEmailMetadata;
@@ -548,6 +549,60 @@ public class Inbox {
    */
   public RotateSecretResponse rotateWebhookSecret(String webhookId) {
     return apiClient.rotateWebhookSecret(emailAddress, webhookId);
+  }
+
+  // ==================== Chaos Methods ====================
+
+  /**
+   * Retrieves the current chaos configuration for this inbox.
+   *
+   * <p>Chaos engineering allows controlled injection of failures and delays into email processing.
+   *
+   * @return the chaos configuration
+   * @throws ApiException if the API request fails or chaos is disabled globally
+   * @throws NetworkException if unable to connect to the server
+   */
+  public ChaosConfig getChaos() {
+    return apiClient.getChaosConfig(emailAddress);
+  }
+
+  /**
+   * Sets the chaos configuration for this inbox.
+   *
+   * <p>Chaos engineering allows controlled injection of failures and delays into email processing.
+   *
+   * <p>Example usage:
+   *
+   * <pre>{@code
+   * ChaosConfig config = ChaosConfig.builder()
+   *     .enabled(true)
+   *     .latency(LatencyConfig.builder()
+   *         .minDelayMs(1000)
+   *         .maxDelayMs(5000)
+   *         .probability(0.5)
+   *         .build())
+   *     .build();
+   *
+   * inbox.setChaos(config);
+   * }</pre>
+   *
+   * @param config the chaos configuration
+   * @return the updated chaos configuration
+   * @throws ApiException if the API request fails or chaos is disabled globally
+   * @throws NetworkException if unable to connect to the server
+   */
+  public ChaosConfig setChaos(ChaosConfig config) {
+    return apiClient.setChaosConfig(emailAddress, config);
+  }
+
+  /**
+   * Disables all chaos for this inbox.
+   *
+   * @throws ApiException if the API request fails or chaos is disabled globally
+   * @throws NetworkException if unable to connect to the server
+   */
+  public void disableChaos() {
+    apiClient.deleteChaosConfig(emailAddress);
   }
 
   // ==================== Wait Methods ====================

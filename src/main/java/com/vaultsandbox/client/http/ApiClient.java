@@ -9,6 +9,7 @@ import com.vaultsandbox.client.exception.InboxAlreadyExistsException;
 import com.vaultsandbox.client.exception.InboxNotFoundException;
 import com.vaultsandbox.client.exception.NetworkException;
 import com.vaultsandbox.client.exception.WebhookNotFoundException;
+import com.vaultsandbox.client.model.ChaosConfig;
 import com.vaultsandbox.client.model.CheckKeyResponse;
 import com.vaultsandbox.client.model.CreateWebhookRequest;
 import com.vaultsandbox.client.model.DeleteAllResponse;
@@ -132,7 +133,8 @@ public class ApiClient {
       String emailAddress,
       Boolean emailAuth,
       String encryption,
-      Boolean spamAnalysis) {
+      Boolean spamAnalysis,
+      ChaosConfig chaos) {
     HashMap<String, Object> payload = new HashMap<>();
     // clientKemPk is optional when encryption is "plain" or when server default is plain
     if (publicKeyB64 != null) {
@@ -152,6 +154,9 @@ public class ApiClient {
     }
     if (spamAnalysis != null) {
       payload.put("spamAnalysis", spamAnalysis);
+    }
+    if (chaos != null) {
+      payload.put("chaos", chaos);
     }
     return post("/api/inboxes", payload, InboxData.class);
   }
@@ -247,6 +252,20 @@ public class ApiClient {
             + "/rotate-secret",
         new HashMap<>(),
         RotateSecretResponse.class);
+  }
+
+  // ==================== Chaos Endpoints ====================
+
+  public ChaosConfig getChaosConfig(String emailAddress) {
+    return get("/api/inboxes/" + urlEncode(emailAddress) + "/chaos", ChaosConfig.class);
+  }
+
+  public ChaosConfig setChaosConfig(String emailAddress, ChaosConfig config) {
+    return post("/api/inboxes/" + urlEncode(emailAddress) + "/chaos", config, ChaosConfig.class);
+  }
+
+  public void deleteChaosConfig(String emailAddress) {
+    delete("/api/inboxes/" + urlEncode(emailAddress) + "/chaos");
   }
 
   // ==================== Internal Implementation ====================

@@ -20,7 +20,7 @@
         <dependency>
             <groupId>com.vaultsandbox</groupId>
             <artifactId>client</artifactId>
-            <version>0.8.5</version>
+            <version>0.9.0</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

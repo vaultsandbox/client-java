@@ -14,7 +14,7 @@
 
 **Production-like email testing. Self-hosted & secure.**
 
-The official Java SDK for [VaultSandbox Gateway](https://github.com/vaultsandbox/gateway) — a secure, receive-only SMTP server for QA/testing environments. This SDK abstracts quantum-safe encryption complexity, making email testing workflows transparent and effortless.
+The official Java SDK for [VaultSandbox Gateway](https://github.com/vaultsandbox/gateway) — a secure, receive-only SMTP server for QA/testing environments. This SDK abstracts encryption complexity, making email testing workflows transparent and effortless.
 
 Stop mocking your email stack. If your app sends real emails in production, it must send real emails in testing. VaultSandbox provides isolated inboxes that behave exactly like production without exposing a single byte of customer data.
 
@@ -39,6 +39,9 @@ Stop mocking your email stack. If your app sends real emails in production, it m
 - **Full Email Access** — Decrypt and access email content, headers, links, and attachments
 - **Email Authentication** — Built-in SPF/DKIM/DMARC validation helpers
 - **Thread-Safe** — Designed for concurrent use in test frameworks
+- **[Spam Analysis](https://vaultsandbox.dev/client-java/concepts/spam-analysis/)** — Rspamd integration for spam scores, classifications, and rule analysis
+- **[Webhooks](https://vaultsandbox.dev/client-java/guides/webhooks/)** — Global and per-inbox HTTP callbacks for email events with filtering and templates
+- **[Chaos Engineering](https://vaultsandbox.dev/client-java/guides/chaos/)** — Per-inbox SMTP failure simulation (latency, drops, errors, greylisting, blackhole)
 
 ## Installation
 
@@ -46,7 +49,7 @@ Stop mocking your email stack. If your app sends real emails in production, it m
 
 ```groovy
 dependencies {
-    testImplementation 'com.vaultsandbox:client:0.8.5'
+    testImplementation 'com.vaultsandbox:client:0.9.0'
 }
 ```
 
@@ -56,7 +59,7 @@ dependencies {
 <dependency>
     <groupId>com.vaultsandbox</groupId>
     <artifactId>client</artifactId>
-    <version>0.8.5</version>
+    <version>0.9.0</version>
     <scope>test</scope>
 </dependency>
 ```

@@ -161,7 +161,8 @@ public final class VaultSandboxClient implements Closeable {
             options.getEmailAddress(),
             options.getEmailAuth(),
             options.getEncryption(),
-            options.getSpamAnalysis());
+            options.getSpamAnalysis(),
+            options.getChaos());
 
     Inbox inbox =
         new Inbox(
