@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Objects;
 
 /**
  * Represents an email attachment.
@@ -97,5 +98,23 @@ public class Attachment {
       throw new IllegalStateException("Attachment content is not available");
     }
     Files.write(path, content);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    Attachment that = (Attachment) o;
+    return size == that.size
+        && Objects.equals(filename, that.filename)
+        && Objects.equals(contentType, that.contentType)
+        && Arrays.equals(content, that.content);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects.hash(filename, contentType, size);
+    result = 31 * result + Arrays.hashCode(content);
+    return result;
   }
 }

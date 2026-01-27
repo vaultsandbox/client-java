@@ -1,13 +1,13 @@
 package com.vaultsandbox.client.strategy;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.vaultsandbox.client.ClientConfig;
 import com.vaultsandbox.client.Email;
 import com.vaultsandbox.client.Inbox;
 import com.vaultsandbox.client.crypto.CryptoUtils;
 import com.vaultsandbox.client.exception.SseException;
 import com.vaultsandbox.client.exception.TimeoutException;
+import com.vaultsandbox.client.internal.GsonProvider;
 import com.vaultsandbox.client.model.EmailMetadata;
 import com.vaultsandbox.client.model.SyncStatus;
 import java.time.Duration;
@@ -71,7 +71,7 @@ public class SseStrategy implements DeliveryStrategy {
     this.reconnectInterval = config.getSseReconnectInterval();
     this.maxReconnectAttempts = config.getSseMaxReconnectAttempts();
     this.backoffMultiplier = 2.0;
-    this.gson = new GsonBuilder().create();
+    this.gson = GsonProvider.get();
   }
 
   @Override
@@ -472,9 +472,25 @@ public class SseStrategy implements DeliveryStrategy {
     }
   }
 
-  /** SSE event payload for email notifications. */
+  /**
+   * SSE event payload for email notifications.
+   *
+   * <p>The server may send inbox identifiers using different field names depending on the API
+   * version. Both "inboxId" and "inboxHash" refer to the same concept - the unique hash identifier
+   * for an inbox (not the email address). We accept all variants for backwards compatibility:
+   *
+   * <ul>
+   *   <li>inboxId - current API field name
+   *   <li>inbox_id - snake_case variant
+   *   <li>inboxHash - legacy field name
+   *   <li>inbox_hash - snake_case legacy variant
+   * </ul>
+   */
   private static final class SseEmailEvent {
-    // Support multiple possible field names from server
+    /**
+     * The inbox hash identifier. Despite the field being named "inboxId" in the JSON, this is
+     * actually the inbox hash (used for cryptographic identification), not the email address.
+     */
     @com.google.gson.annotations.SerializedName(
         value = "inboxId",
         alternate = {"inbox_id", "inbox_hash", "inboxHash"})

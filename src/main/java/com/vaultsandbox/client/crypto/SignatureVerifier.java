@@ -3,8 +3,6 @@ package com.vaultsandbox.client.crypto;
 import com.vaultsandbox.client.exception.SignatureVerificationException;
 import com.vaultsandbox.client.model.Algorithms;
 import com.vaultsandbox.client.model.EncryptedPayload;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.bouncycastle.pqc.crypto.mldsa.MLDSAParameters;
 import org.bouncycastle.pqc.crypto.mldsa.MLDSAPublicKeyParameters;
@@ -50,6 +48,14 @@ public class SignatureVerifier {
       byte[] signature = Base64Url.decode(payload.getSig());
       byte[] serverSigPk = Base64Url.decode(payload.getServerSigPk());
 
+      // Validate public key size per ML-DSA-65 specification
+      if (serverSigPk.length != ML_DSA_65_PUBLIC_KEY_SIZE) {
+        throw new SignatureVerificationException(
+            String.format(
+                "Invalid server signature public key size: expected %d bytes, got %d bytes",
+                ML_DSA_65_PUBLIC_KEY_SIZE, serverSigPk.length));
+      }
+
       // Use raw public key with Bouncy Castle's low-level API
       MLDSAPublicKeyParameters publicKeyParams =
           new MLDSAPublicKeyParameters(MLDSAParameters.ml_dsa_65, serverSigPk);
@@ -81,7 +87,7 @@ public class SignatureVerifier {
   private byte[] buildTranscript(EncryptedPayload p) {
     // version (1 byte) || algs_ciphersuite || context ||
     // ct_kem || nonce || aad || ciphertext || server_sig_pk
-    return concat(
+    return CryptoUtils.concat(
         new byte[] {(byte) p.getV()},
         formatAlgsCiphersuite(p.getAlgs()).getBytes(StandardCharsets.UTF_8),
         CONTEXT.getBytes(StandardCharsets.UTF_8),
@@ -95,17 +101,5 @@ public class SignatureVerifier {
   private String formatAlgsCiphersuite(Algorithms algs) {
     return String.format(
         "%s:%s:%s:%s", algs.getKem(), algs.getSig(), algs.getAead(), algs.getKdf());
-  }
-
-  private byte[] concat(byte[]... arrays) {
-    try {
-      ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      for (byte[] array : arrays) {
-        bos.write(array);
-      }
-      return bos.toByteArray();
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to concatenate byte arrays", e);
-    }
   }
 }

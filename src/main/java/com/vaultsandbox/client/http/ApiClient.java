@@ -1,14 +1,18 @@
 package com.vaultsandbox.client.http;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.vaultsandbox.client.exception.ApiException;
 import com.vaultsandbox.client.exception.EmailNotFoundException;
 import com.vaultsandbox.client.exception.InboxAlreadyExistsException;
 import com.vaultsandbox.client.exception.InboxNotFoundException;
 import com.vaultsandbox.client.exception.NetworkException;
+import com.vaultsandbox.client.exception.RateLimitedException;
+import com.vaultsandbox.client.exception.RequestInterruptedException;
 import com.vaultsandbox.client.exception.WebhookNotFoundException;
+import com.vaultsandbox.client.internal.ExcludedFromCoverage;
+import com.vaultsandbox.client.internal.GsonProvider;
+import com.vaultsandbox.client.internal.UrlUtils;
 import com.vaultsandbox.client.model.ChaosConfig;
 import com.vaultsandbox.client.model.CheckKeyResponse;
 import com.vaultsandbox.client.model.CreateWebhookRequest;
@@ -29,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
-import javax.annotation.processing.Generated;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -55,15 +58,23 @@ public class ApiClient {
     this.maxRetries = config.getMaxRetries();
     this.retryDelayMs = config.getRetryDelay().toMillis();
     this.retryableCodes = config.getRetryOn();
-    this.gson = new GsonBuilder().create();
+    this.gson = GsonProvider.get();
     this.client = buildClient(config);
   }
 
   private OkHttpClient buildClient(ApiClientConfig config) {
-    return new OkHttpClient.Builder()
-        .connectTimeout(config.getTimeout())
-        .readTimeout(config.getTimeout())
-        .writeTimeout(config.getTimeout())
+    OkHttpClient baseClient = config.getHttpClient();
+    if (baseClient == null) {
+      baseClient =
+          new OkHttpClient.Builder()
+              .connectTimeout(config.getTimeout())
+              .readTimeout(config.getTimeout())
+              .writeTimeout(config.getTimeout())
+              .build();
+    }
+    // Add auth interceptor to the provided or new client
+    return baseClient
+        .newBuilder()
         .addInterceptor(
             chain -> {
               Request request =
@@ -161,24 +172,23 @@ public class ApiClient {
     return post("/api/inboxes", payload, InboxData.class);
   }
 
-  // Excluded from coverage: destructive method only used for test cleanup, not for production use
   @SuppressWarnings("unused")
-  @Generated("excluded from coverage - test cleanup only")
+  @ExcludedFromCoverage("Destructive method only used for test cleanup, not for production use")
   public DeleteAllResponse deleteAllInboxes() {
     return delete("/api/inboxes", DeleteAllResponse.class);
   }
 
   public void deleteInbox(String emailAddress) {
-    delete("/api/inboxes/" + urlEncode(emailAddress));
+    delete("/api/inboxes/" + UrlUtils.encode(emailAddress));
   }
 
   public SyncStatus getSyncStatus(String emailAddress) {
-    return get("/api/inboxes/" + urlEncode(emailAddress) + "/sync", SyncStatus.class);
+    return get("/api/inboxes/" + UrlUtils.encode(emailAddress) + "/sync", SyncStatus.class);
   }
 
   public List<EmailData> listEmails(String emailAddress, boolean includeContent) {
     Type listType = new TypeToken<List<EmailData>>() {}.getType();
-    String url = "/api/inboxes/" + urlEncode(emailAddress) + "/emails";
+    String url = "/api/inboxes/" + UrlUtils.encode(emailAddress) + "/emails";
     if (includeContent) {
       url += "?includeContent=true";
     }
@@ -187,58 +197,75 @@ public class ApiClient {
 
   public EmailData getEmail(String emailAddress, String emailId) {
     return get(
-        "/api/inboxes/" + urlEncode(emailAddress) + "/emails/" + urlEncode(emailId),
+        "/api/inboxes/" + UrlUtils.encode(emailAddress) + "/emails/" + UrlUtils.encode(emailId),
         EmailData.class);
   }
 
   public RawEmailData getRawEmail(String emailAddress, String emailId) {
     return get(
-        "/api/inboxes/" + urlEncode(emailAddress) + "/emails/" + urlEncode(emailId) + "/raw",
+        "/api/inboxes/"
+            + UrlUtils.encode(emailAddress)
+            + "/emails/"
+            + UrlUtils.encode(emailId)
+            + "/raw",
         RawEmailData.class);
   }
 
   public void markAsRead(String emailAddress, String emailId) {
     patch(
-        "/api/inboxes/" + urlEncode(emailAddress) + "/emails/" + urlEncode(emailId) + "/read",
+        "/api/inboxes/"
+            + UrlUtils.encode(emailAddress)
+            + "/emails/"
+            + UrlUtils.encode(emailId)
+            + "/read",
         java.util.Map.of("isRead", true));
   }
 
   public void deleteEmail(String emailAddress, String emailId) {
-    delete("/api/inboxes/" + urlEncode(emailAddress) + "/emails/" + urlEncode(emailId));
+    delete("/api/inboxes/" + UrlUtils.encode(emailAddress) + "/emails/" + UrlUtils.encode(emailId));
   }
 
   // ==================== Webhook Endpoints ====================
 
   public WebhookData createWebhook(String emailAddress, CreateWebhookRequest request) {
     return post(
-        "/api/inboxes/" + urlEncode(emailAddress) + "/webhooks", request, WebhookData.class);
+        "/api/inboxes/" + UrlUtils.encode(emailAddress) + "/webhooks", request, WebhookData.class);
   }
 
   public WebhookListResponse listWebhooks(String emailAddress) {
-    return get("/api/inboxes/" + urlEncode(emailAddress) + "/webhooks", WebhookListResponse.class);
+    return get(
+        "/api/inboxes/" + UrlUtils.encode(emailAddress) + "/webhooks", WebhookListResponse.class);
   }
 
   public WebhookData getWebhook(String emailAddress, String webhookId) {
     return get(
-        "/api/inboxes/" + urlEncode(emailAddress) + "/webhooks/" + urlEncode(webhookId),
+        "/api/inboxes/" + UrlUtils.encode(emailAddress) + "/webhooks/" + UrlUtils.encode(webhookId),
         WebhookData.class);
   }
 
   public WebhookData updateWebhook(
       String emailAddress, String webhookId, UpdateWebhookRequest request) {
     return patch(
-        "/api/inboxes/" + urlEncode(emailAddress) + "/webhooks/" + urlEncode(webhookId),
+        "/api/inboxes/" + UrlUtils.encode(emailAddress) + "/webhooks/" + UrlUtils.encode(webhookId),
         request,
         WebhookData.class);
   }
 
   public void deleteWebhook(String emailAddress, String webhookId) {
-    delete("/api/inboxes/" + urlEncode(emailAddress) + "/webhooks/" + urlEncode(webhookId));
+    delete(
+        "/api/inboxes/"
+            + UrlUtils.encode(emailAddress)
+            + "/webhooks/"
+            + UrlUtils.encode(webhookId));
   }
 
   public TestWebhookResponse testWebhook(String emailAddress, String webhookId) {
     return post(
-        "/api/inboxes/" + urlEncode(emailAddress) + "/webhooks/" + urlEncode(webhookId) + "/test",
+        "/api/inboxes/"
+            + UrlUtils.encode(emailAddress)
+            + "/webhooks/"
+            + UrlUtils.encode(webhookId)
+            + "/test",
         new HashMap<>(),
         TestWebhookResponse.class);
   }
@@ -246,9 +273,9 @@ public class ApiClient {
   public RotateSecretResponse rotateWebhookSecret(String emailAddress, String webhookId) {
     return post(
         "/api/inboxes/"
-            + urlEncode(emailAddress)
+            + UrlUtils.encode(emailAddress)
             + "/webhooks/"
-            + urlEncode(webhookId)
+            + UrlUtils.encode(webhookId)
             + "/rotate-secret",
         new HashMap<>(),
         RotateSecretResponse.class);
@@ -257,15 +284,16 @@ public class ApiClient {
   // ==================== Chaos Endpoints ====================
 
   public ChaosConfig getChaosConfig(String emailAddress) {
-    return get("/api/inboxes/" + urlEncode(emailAddress) + "/chaos", ChaosConfig.class);
+    return get("/api/inboxes/" + UrlUtils.encode(emailAddress) + "/chaos", ChaosConfig.class);
   }
 
   public ChaosConfig setChaosConfig(String emailAddress, ChaosConfig config) {
-    return post("/api/inboxes/" + urlEncode(emailAddress) + "/chaos", config, ChaosConfig.class);
+    return post(
+        "/api/inboxes/" + UrlUtils.encode(emailAddress) + "/chaos", config, ChaosConfig.class);
   }
 
   public void deleteChaosConfig(String emailAddress) {
-    delete("/api/inboxes/" + urlEncode(emailAddress) + "/chaos");
+    delete("/api/inboxes/" + UrlUtils.encode(emailAddress) + "/chaos");
   }
 
   // ==================== Internal Implementation ====================
@@ -390,17 +418,30 @@ public class ApiClient {
       case 400 -> throw new ApiException("Bad request: " + body, 400);
       case 401 -> throw new ApiException("Invalid API key", 401);
       case 404 -> {
+        String identifier = extractIdentifier(body);
         if (body.contains("webhook") || body.contains("Webhook")) {
-          throw new WebhookNotFoundException(extractIdentifier(body));
+          throw new WebhookNotFoundException(identifier);
         } else if (body.contains("inbox") || body.contains("Inbox")) {
-          throw new InboxNotFoundException(extractIdentifier(body));
+          throw new InboxNotFoundException(identifier);
         } else if (body.contains("email") || body.contains("Email")) {
-          throw new EmailNotFoundException(extractIdentifier(body));
+          throw new EmailNotFoundException(identifier);
         }
         throw new ApiException("Not found: " + body, 404);
       }
       case 409 -> throw new InboxAlreadyExistsException(extractIdentifier(body));
-      case 429 -> throw new ApiException("Rate limited", 429);
+      case 429 -> {
+        String retryAfter = response.header("Retry-After");
+        if (retryAfter != null) {
+          try {
+            long seconds = Long.parseLong(retryAfter.trim());
+            throw new RateLimitedException("Rate limited", seconds);
+          } catch (NumberFormatException e) {
+            // Retry-After can also be an HTTP date, but we only support seconds
+            log.debug("Could not parse Retry-After header: {}", retryAfter);
+          }
+        }
+        throw new RateLimitedException("Rate limited");
+      }
       default -> {
         if (code >= 500) {
           throw new ApiException("Server error: " + body, code);
@@ -450,24 +491,48 @@ public class ApiClient {
       Thread.sleep(millis);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new ApiException("Request interrupted", 0);
+      throw new RequestInterruptedException("Request interrupted during retry backoff", e);
     }
   }
 
   private String extractIdentifier(String body) {
-    // Try to extract an identifier from error messages like "Inbox not found: test@example.com"
-    int colonIndex = body.lastIndexOf(':');
-    if (colonIndex >= 0 && colonIndex < body.length() - 1) {
-      return body.substring(colonIndex + 1).trim();
+    // Try to parse as JSON first
+    if (body.startsWith("{")) {
+      try {
+        var errorResponse = gson.fromJson(body, java.util.Map.class);
+        if (errorResponse != null) {
+          // Try common JSON error response fields
+          Object identifier = errorResponse.get("identifier");
+          if (identifier != null) {
+            return identifier.toString();
+          }
+          Object id = errorResponse.get("id");
+          if (id != null) {
+            return id.toString();
+          }
+          // Try to extract from message field
+          Object message = errorResponse.get("message");
+          if (message == null) {
+            message = errorResponse.get("error");
+          }
+          if (message != null) {
+            return extractIdentifierFromMessage(message.toString());
+          }
+        }
+      } catch (Exception e) {
+        // JSON parsing failed, fall through to string-based extraction
+        log.debug("Could not parse error body as JSON: {}", e.getMessage());
+      }
     }
-    return body;
+    return extractIdentifierFromMessage(body);
   }
 
-  private String urlEncode(String value) {
-    try {
-      return java.net.URLEncoder.encode(value, "UTF-8");
-    } catch (java.io.UnsupportedEncodingException e) {
-      return value;
+  private String extractIdentifierFromMessage(String message) {
+    // Try to extract an identifier from error messages like "Inbox not found: test@example.com"
+    int colonIndex = message.lastIndexOf(':');
+    if (colonIndex >= 0 && colonIndex < message.length() - 1) {
+      return message.substring(colonIndex + 1).trim();
     }
+    return message;
   }
 }

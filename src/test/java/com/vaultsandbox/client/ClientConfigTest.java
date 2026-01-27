@@ -199,4 +199,99 @@ class ClientConfigTest {
         () -> retryOn.add(400),
         "RetryOn set should be immutable");
   }
+
+  // ==================== Validation Tests ====================
+
+  @Test
+  void testJitterFactorMustBeBetweenZeroAndOne() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").jitterFactor(-0.1).build(),
+        "jitterFactor below 0 should throw");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").jitterFactor(1.1).build(),
+        "jitterFactor above 1 should throw");
+
+    // Edge cases - 0 and 1 should be valid
+    assertNotNull(ClientConfig.builder().apiKey("test-key").jitterFactor(0).build());
+    assertNotNull(ClientConfig.builder().apiKey("test-key").jitterFactor(1).build());
+  }
+
+  @Test
+  void testMaxRetriesMustBeNonNegative() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").maxRetries(-1).build(),
+        "negative maxRetries should throw");
+
+    // Zero should be valid
+    assertNotNull(ClientConfig.builder().apiKey("test-key").maxRetries(0).build());
+  }
+
+  @Test
+  void testBackoffMultiplierMustBeGreaterThanOne() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").backoffMultiplier(1.0).build(),
+        "backoffMultiplier of 1 should throw");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").backoffMultiplier(0.5).build(),
+        "backoffMultiplier below 1 should throw");
+
+    // Just above 1 should be valid
+    assertNotNull(ClientConfig.builder().apiKey("test-key").backoffMultiplier(1.01).build());
+  }
+
+  @Test
+  void testSseMaxReconnectAttemptsMustBeNonNegative() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").sseMaxReconnectAttempts(-1).build(),
+        "negative sseMaxReconnectAttempts should throw");
+
+    // Zero should be valid
+    assertNotNull(ClientConfig.builder().apiKey("test-key").sseMaxReconnectAttempts(0).build());
+  }
+
+  @Test
+  void testDurationsMustBePositive() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").httpTimeout(Duration.ZERO).build(),
+        "zero httpTimeout should throw");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").httpTimeout(Duration.ofSeconds(-1)).build(),
+        "negative httpTimeout should throw");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").waitTimeout(Duration.ZERO).build(),
+        "zero waitTimeout should throw");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").retryDelay(Duration.ZERO).build(),
+        "zero retryDelay should throw");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").sseReconnectInterval(Duration.ZERO).build(),
+        "zero sseReconnectInterval should throw");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").pollInterval(Duration.ZERO).build(),
+        "zero pollInterval should throw");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClientConfig.builder().apiKey("test-key").maxBackoff(Duration.ZERO).build(),
+        "zero maxBackoff should throw");
+  }
 }

@@ -2,6 +2,8 @@ package com.vaultsandbox.client.exception;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.time.Duration;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 class ExceptionTest {
@@ -153,6 +155,81 @@ class ExceptionTest {
   @Test
   void testSignatureVerificationExceptionExtendsVaultSandboxException() {
     SignatureVerificationException ex = new SignatureVerificationException();
+    assertInstanceOf(VaultSandboxException.class, ex);
+  }
+
+  // ==================== InboxExpiredException Tests ====================
+
+  @Test
+  void testInboxExpiredExceptionWithEmailAndTime() {
+    Instant expiredAt = Instant.parse("2026-01-26T10:00:00Z");
+    InboxExpiredException ex = new InboxExpiredException("test@example.com", expiredAt);
+
+    assertTrue(ex.getMessage().contains("test@example.com"));
+    assertTrue(ex.getMessage().contains(expiredAt.toString()));
+    assertEquals("test@example.com", ex.getEmailAddress());
+    assertEquals(expiredAt, ex.getExpiredAt());
+  }
+
+  @Test
+  void testInboxExpiredExceptionExtendsVaultSandboxException() {
+    InboxExpiredException ex = new InboxExpiredException("test@example.com", Instant.now());
+    assertInstanceOf(VaultSandboxException.class, ex);
+  }
+
+  // ==================== RateLimitedException Tests ====================
+
+  @Test
+  void testRateLimitedExceptionWithoutRetryAfter() {
+    RateLimitedException ex = new RateLimitedException("Rate limited");
+
+    assertEquals("Rate limited", ex.getMessage());
+    assertEquals(429, ex.getStatusCode());
+    assertTrue(ex.getRetryAfter().isEmpty());
+    assertEquals(-1, ex.getRetryAfterSeconds());
+  }
+
+  @Test
+  void testRateLimitedExceptionWithRetryAfter() {
+    RateLimitedException ex = new RateLimitedException("Rate limited", 60);
+
+    assertEquals("Rate limited", ex.getMessage());
+    assertEquals(429, ex.getStatusCode());
+    assertTrue(ex.getRetryAfter().isPresent());
+    assertEquals(Duration.ofSeconds(60), ex.getRetryAfter().get());
+    assertEquals(60, ex.getRetryAfterSeconds());
+  }
+
+  @Test
+  void testRateLimitedExceptionExtendsApiException() {
+    RateLimitedException ex = new RateLimitedException("Rate limited");
+    assertInstanceOf(ApiException.class, ex);
+    assertInstanceOf(VaultSandboxException.class, ex);
+  }
+
+  // ==================== RequestInterruptedException Tests ====================
+
+  @Test
+  void testRequestInterruptedExceptionWithMessage() {
+    RequestInterruptedException ex = new RequestInterruptedException("Request interrupted");
+
+    assertEquals("Request interrupted", ex.getMessage());
+    assertNull(ex.getCause());
+  }
+
+  @Test
+  void testRequestInterruptedExceptionWithMessageAndCause() {
+    InterruptedException cause = new InterruptedException("Thread interrupted");
+    RequestInterruptedException ex =
+        new RequestInterruptedException("Request interrupted during backoff", cause);
+
+    assertEquals("Request interrupted during backoff", ex.getMessage());
+    assertSame(cause, ex.getCause());
+  }
+
+  @Test
+  void testRequestInterruptedExceptionExtendsVaultSandboxException() {
+    RequestInterruptedException ex = new RequestInterruptedException("test");
     assertInstanceOf(VaultSandboxException.class, ex);
   }
 }

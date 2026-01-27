@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.1] - 2026-01-26
+
+### Added
+
+- Validation in `ClientConfig.Builder`
+- `equals()`/`hashCode()` methods for data classes
+
+### Fixed
+
+- Resource leaks, NPE, race conditions, and interrupt handling
+- Double date parsing in `ExportedInbox`
+
+### Improved
+
+- API robustness: expiration checks, rate limit handling, better error messages
+- Consolidated shared resources (OkHttpClient, Gson)
+
+
+
 ## [0.9.0] - 2026-01-22
 
 ### Added

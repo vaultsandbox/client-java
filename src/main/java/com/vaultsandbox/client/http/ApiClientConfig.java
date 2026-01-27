@@ -3,6 +3,7 @@ package com.vaultsandbox.client.http;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
+import okhttp3.OkHttpClient;
 
 public final class ApiClientConfig {
   private final String baseUrl;
@@ -11,6 +12,7 @@ public final class ApiClientConfig {
   private final int maxRetries;
   private final Duration retryDelay;
   private final Set<Integer> retryOn;
+  private final OkHttpClient httpClient;
 
   private ApiClientConfig(Builder builder) {
     this.baseUrl = builder.baseUrl;
@@ -19,6 +21,7 @@ public final class ApiClientConfig {
     this.maxRetries = builder.maxRetries;
     this.retryDelay = builder.retryDelay;
     this.retryOn = builder.retryOn;
+    this.httpClient = builder.httpClient;
   }
 
   public static Builder builder() {
@@ -49,6 +52,10 @@ public final class ApiClientConfig {
     return Set.copyOf(retryOn);
   }
 
+  public OkHttpClient getHttpClient() {
+    return httpClient;
+  }
+
   public static class Builder {
     private String baseUrl = "https://smtp.vaultsandbox.com";
     private String apiKey;
@@ -56,6 +63,7 @@ public final class ApiClientConfig {
     private int maxRetries = 3;
     private Duration retryDelay = Duration.ofSeconds(1);
     private Set<Integer> retryOn = Set.of(408, 429, 500, 502, 503, 504);
+    private OkHttpClient httpClient;
 
     public Builder baseUrl(String url) {
       this.baseUrl = url;
@@ -84,6 +92,11 @@ public final class ApiClientConfig {
 
     public Builder retryOn(Set<Integer> statusCodes) {
       this.retryOn = Set.copyOf(statusCodes);
+      return this;
+    }
+
+    public Builder httpClient(OkHttpClient client) {
+      this.httpClient = client;
       return this;
     }
 

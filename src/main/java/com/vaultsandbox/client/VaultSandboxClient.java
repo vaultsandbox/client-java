@@ -1,7 +1,6 @@
 package com.vaultsandbox.client;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.vaultsandbox.client.crypto.Base64Url;
 import com.vaultsandbox.client.crypto.Decryptor;
 import com.vaultsandbox.client.crypto.Keypair;
@@ -13,6 +12,9 @@ import com.vaultsandbox.client.exception.InboxNotFoundException;
 import com.vaultsandbox.client.exception.InvalidImportDataException;
 import com.vaultsandbox.client.http.ApiClient;
 import com.vaultsandbox.client.http.ApiClientConfig;
+import com.vaultsandbox.client.internal.ExcludedFromCoverage;
+import com.vaultsandbox.client.internal.GsonProvider;
+import com.vaultsandbox.client.internal.UrlUtils;
 import com.vaultsandbox.client.model.DeleteAllResponse;
 import com.vaultsandbox.client.model.ExportedInbox;
 import com.vaultsandbox.client.model.InboxData;
@@ -30,7 +32,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.annotation.processing.Generated;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,12 +80,12 @@ public final class VaultSandboxClient implements Closeable {
     log.info("Initializing VaultSandbox client (strategy={})", config.getStrategy());
     this.config = config;
     this.httpClient = createHttpClient(config);
-    this.apiClient = createApiClient(config);
+    this.apiClient = createApiClient(config, httpClient);
     this.keypairGenerator = new KeypairGenerator();
     this.decryptor = new Decryptor();
     this.signatureVerifier = new SignatureVerifier();
     this.deliveryStrategy = StrategyFactory.create(config.getStrategy(), httpClient, config);
-    this.gson = new GsonBuilder().create();
+    this.gson = GsonProvider.get();
     log.debug("VaultSandbox client initialized: baseUrl={}", config.getBaseUrl());
   }
 
@@ -164,6 +165,7 @@ public final class VaultSandboxClient implements Closeable {
             options.getSpamAnalysis(),
             options.getChaos());
 
+    String emailAddress = data.getEmailAddress();
     Inbox inbox =
         new Inbox(
             data,
@@ -172,9 +174,10 @@ public final class VaultSandboxClient implements Closeable {
             decryptor,
             signatureVerifier,
             deliveryStrategy,
-            config.getWaitTimeout());
-    inboxes.put(inbox.getEmailAddress(), inbox);
-    log.debug("Inbox created: {} (encrypted={})", inbox.getEmailAddress(), data.isEncrypted());
+            config.getWaitTimeout(),
+            () -> inboxes.remove(emailAddress));
+    inboxes.put(emailAddress, inbox);
+    log.debug("Inbox created: {} (encrypted={})", emailAddress, data.isEncrypted());
     return inbox;
   }
 
@@ -208,9 +211,8 @@ public final class VaultSandboxClient implements Closeable {
    * @throws ApiException if the API request fails
    * @throws NetworkException if unable to connect to the server
    */
-  // Excluded from coverage: destructive method only used for test cleanup, not for production use
   @SuppressWarnings("unused")
-  @Generated("excluded from coverage - test cleanup only")
+  @ExcludedFromCoverage("Destructive method only used for test cleanup, not for production use")
   public int deleteAllInboxes() {
     log.info("Deleting all inboxes");
     DeleteAllResponse response = apiClient.deleteAllInboxes();
@@ -386,7 +388,7 @@ public final class VaultSandboxClient implements Closeable {
     // Verify inbox still exists on server
     try {
       apiClient.get(
-          "/api/inboxes/" + urlEncode(data.getEmailAddress()) + "/sync", SyncStatus.class);
+          "/api/inboxes/" + UrlUtils.encode(data.getEmailAddress()) + "/sync", SyncStatus.class);
     } catch (InboxNotFoundException e) {
       throw new InvalidImportDataException("Inbox no longer exists on server");
     }
@@ -409,6 +411,7 @@ public final class VaultSandboxClient implements Closeable {
     inboxData.setEncrypted(data.getEncrypted());
     inboxData.setEmailAuth(data.getEmailAuth());
 
+    String emailAddress = data.getEmailAddress();
     Inbox inbox =
         new Inbox(
             inboxData,
@@ -417,9 +420,10 @@ public final class VaultSandboxClient implements Closeable {
             decryptor,
             signatureVerifier,
             deliveryStrategy,
-            config.getWaitTimeout());
-    inboxes.put(inbox.getEmailAddress(), inbox);
-    log.debug("Inbox imported: {} (encrypted={})", inbox.getEmailAddress(), data.isEncrypted());
+            config.getWaitTimeout(),
+            () -> inboxes.remove(emailAddress));
+    inboxes.put(emailAddress, inbox);
+    log.debug("Inbox imported: {} (encrypted={})", emailAddress, data.isEncrypted());
 
     return inbox;
   }
@@ -488,6 +492,8 @@ public final class VaultSandboxClient implements Closeable {
     log.info("Closing VaultSandbox client");
     inboxes.clear();
     deliveryStrategy.close();
+    httpClient.dispatcher().executorService().shutdown();
+    httpClient.connectionPool().evictAll();
   }
 
   private OkHttpClient createHttpClient(ClientConfig config) {
@@ -498,7 +504,7 @@ public final class VaultSandboxClient implements Closeable {
         .build();
   }
 
-  private ApiClient createApiClient(ClientConfig config) {
+  private ApiClient createApiClient(ClientConfig config, OkHttpClient httpClient) {
     return new ApiClient(
         ApiClientConfig.builder()
             .baseUrl(config.getBaseUrl())
@@ -507,14 +513,7 @@ public final class VaultSandboxClient implements Closeable {
             .maxRetries(config.getMaxRetries())
             .retryDelay(config.getRetryDelay())
             .retryOn(config.getRetryOn())
+            .httpClient(httpClient)
             .build());
-  }
-
-  private String urlEncode(String value) {
-    try {
-      return java.net.URLEncoder.encode(value, "UTF-8");
-    } catch (java.io.UnsupportedEncodingException e) {
-      return value;
-    }
   }
 }

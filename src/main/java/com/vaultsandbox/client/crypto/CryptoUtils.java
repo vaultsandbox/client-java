@@ -1,6 +1,8 @@
 package com.vaultsandbox.client.crypto;
 
 import com.vaultsandbox.client.model.EncryptedPayload;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -126,6 +128,24 @@ public final class CryptoUtils {
       return Base64Url.encode(hash);
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException("SHA-256 not available", e);
+    }
+  }
+
+  /**
+   * Concatenates multiple byte arrays into a single byte array.
+   *
+   * @param arrays the byte arrays to concatenate
+   * @return a new byte array containing all input arrays concatenated in order
+   */
+  public static byte[] concat(byte[]... arrays) {
+    try {
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      for (byte[] array : arrays) {
+        bos.write(array);
+      }
+      return bos.toByteArray();
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to concatenate byte arrays", e);
     }
   }
 }

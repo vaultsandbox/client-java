@@ -143,6 +143,46 @@ public final class ClientConfig {
     return Set.copyOf(retryOn);
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ClientConfig that = (ClientConfig) o;
+    return maxRetries == that.maxRetries
+        && sseMaxReconnectAttempts == that.sseMaxReconnectAttempts
+        && Double.compare(that.backoffMultiplier, backoffMultiplier) == 0
+        && Double.compare(that.jitterFactor, jitterFactor) == 0
+        && Objects.equals(baseUrl, that.baseUrl)
+        && Objects.equals(apiKey, that.apiKey)
+        && strategy == that.strategy
+        && Objects.equals(httpTimeout, that.httpTimeout)
+        && Objects.equals(waitTimeout, that.waitTimeout)
+        && Objects.equals(retryDelay, that.retryDelay)
+        && Objects.equals(sseReconnectInterval, that.sseReconnectInterval)
+        && Objects.equals(pollInterval, that.pollInterval)
+        && Objects.equals(maxBackoff, that.maxBackoff)
+        && Objects.equals(retryOn, that.retryOn);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        baseUrl,
+        apiKey,
+        strategy,
+        httpTimeout,
+        waitTimeout,
+        maxRetries,
+        retryDelay,
+        sseReconnectInterval,
+        sseMaxReconnectAttempts,
+        pollInterval,
+        maxBackoff,
+        backoffMultiplier,
+        jitterFactor,
+        retryOn);
+  }
+
   /** Builder for creating {@link ClientConfig} instances. */
   public static class Builder {
     private String baseUrl = "https://smtp.vaultsandbox.com";
@@ -321,8 +361,44 @@ public final class ClientConfig {
      *
      * @return a new ClientConfig instance
      * @throws NullPointerException if apiKey is not set
+     * @throws IllegalArgumentException if any configuration value is invalid
      */
     public ClientConfig build() {
+      // Validate numeric ranges
+      if (jitterFactor < 0 || jitterFactor > 1) {
+        throw new IllegalArgumentException("jitterFactor must be between 0 and 1");
+      }
+      if (maxRetries < 0) {
+        throw new IllegalArgumentException("maxRetries must be non-negative");
+      }
+      if (backoffMultiplier <= 1) {
+        throw new IllegalArgumentException("backoffMultiplier must be greater than 1");
+      }
+      if (sseMaxReconnectAttempts < 0) {
+        throw new IllegalArgumentException("sseMaxReconnectAttempts must be non-negative");
+      }
+
+      // Validate durations are positive
+      if (httpTimeout != null && (httpTimeout.isNegative() || httpTimeout.isZero())) {
+        throw new IllegalArgumentException("httpTimeout must be positive");
+      }
+      if (waitTimeout != null && (waitTimeout.isNegative() || waitTimeout.isZero())) {
+        throw new IllegalArgumentException("waitTimeout must be positive");
+      }
+      if (retryDelay != null && (retryDelay.isNegative() || retryDelay.isZero())) {
+        throw new IllegalArgumentException("retryDelay must be positive");
+      }
+      if (sseReconnectInterval != null
+          && (sseReconnectInterval.isNegative() || sseReconnectInterval.isZero())) {
+        throw new IllegalArgumentException("sseReconnectInterval must be positive");
+      }
+      if (pollInterval != null && (pollInterval.isNegative() || pollInterval.isZero())) {
+        throw new IllegalArgumentException("pollInterval must be positive");
+      }
+      if (maxBackoff != null && (maxBackoff.isNegative() || maxBackoff.isZero())) {
+        throw new IllegalArgumentException("maxBackoff must be positive");
+      }
+
       return new ClientConfig(this);
     }
   }

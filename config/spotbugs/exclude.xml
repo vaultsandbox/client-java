@@ -49,6 +49,18 @@
         <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
     </Match>
 
+    <!-- Exclude EI_EXPOSE_REP for ApiClientConfig - OkHttpClient is intentionally shared -->
+    <Match>
+        <Class name="com.vaultsandbox.client.http.ApiClientConfig"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP for ApiClientConfig$Builder - OkHttpClient is intentionally shared -->
+    <Match>
+        <Class name="com.vaultsandbox.client.http.ApiClientConfig$Builder"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
     <!-- Test classes - DMI_RANDOM_USED_ONLY_ONCE is acceptable for crypto tests -->
     <Match>
         <Class name="~.*Test"/>

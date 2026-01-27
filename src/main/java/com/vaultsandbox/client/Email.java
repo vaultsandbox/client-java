@@ -9,6 +9,7 @@ import com.vaultsandbox.client.model.SpamAnalysisStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -61,7 +62,7 @@ public class Email {
     // Use decrypted metadata if available, fall back to legacy fields
     if (metadata != null) {
       this.from = metadata.getFrom();
-      this.to = List.copyOf(metadata.getTo());
+      this.to = metadata.getTo() != null ? List.copyOf(metadata.getTo()) : List.of();
       this.subject = metadata.getSubject();
       // receivedAt may be in metadata or EmailData
       String receivedAtStr =
@@ -312,5 +313,18 @@ public class Email {
    */
   public Map<String, Object> getMetadata() {
     return metadata;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    Email email = (Email) o;
+    return Objects.equals(id, email.id);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id);
   }
 }

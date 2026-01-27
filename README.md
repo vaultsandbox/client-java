@@ -12,36 +12,15 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Java](https://img.shields.io/badge/java-%3E%3D21-blue.svg)](https://openjdk.org/)
 
-**Production-like email testing. Self-hosted & secure.**
+**Production-like email testing. Self-hosted and secure.**
 
-The official Java SDK for [VaultSandbox Gateway](https://github.com/vaultsandbox/gateway) — a secure, receive-only SMTP server for QA/testing environments. This SDK abstracts encryption complexity, making email testing workflows transparent and effortless.
+The official Java SDK for [VaultSandbox Gateway](https://github.com/vaultsandbox/gateway) — a self-hosted SMTP testing platform that replicates real-world email delivery with TLS, authentication, spam analysis, chaos engineering, and zero-knowledge encryption.
 
-Stop mocking your email stack. If your app sends real emails in production, it must send real emails in testing. VaultSandbox provides isolated inboxes that behave exactly like production without exposing a single byte of customer data.
+Stop mocking. Test email like production.
+
+**[See full feature list →](https://github.com/vaultsandbox/gateway)**
 
 > **Java 21+** required.
-
-## Why VaultSandbox?
-
-| Feature             | Simple Mocks     | Public SaaS  | **VaultSandbox**    |
-| :------------------ | :--------------- | :----------- | :------------------ |
-| **TLS/SSL**         | Ignored/Disabled | Partial      | **Real ACME certs** |
-| **Data Privacy**    | Local only       | Shared cloud | **Private VPC**     |
-| **Inbound Mail**    | Outbound only    | Yes          | **Real MX**         |
-| **Auth (SPF/DKIM)** | None             | Limited      | **Full Validation** |
-| **Crypto**          | Plaintext        | Varies       | **Zero-Knowledge**  |
-
-## Features
-
-- **Quantum-Safe Encryption** — Automatic ML-KEM-768 (Kyber768) key encapsulation + AES-256-GCM encryption
-- **Zero Crypto Knowledge Required** — All cryptographic operations are invisible to the user
-- **Real-Time Email Delivery** — SSE-based delivery with smart polling fallback
-- **Built for CI/CD** — Deterministic tests without sleeps, polling, or flakiness
-- **Full Email Access** — Decrypt and access email content, headers, links, and attachments
-- **Email Authentication** — Built-in SPF/DKIM/DMARC validation helpers
-- **Thread-Safe** — Designed for concurrent use in test frameworks
-- **[Spam Analysis](https://vaultsandbox.dev/client-java/concepts/spam-analysis/)** — Rspamd integration for spam scores, classifications, and rule analysis
-- **[Webhooks](https://vaultsandbox.dev/client-java/guides/webhooks/)** — Global and per-inbox HTTP callbacks for email events with filtering and templates
-- **[Chaos Engineering](https://vaultsandbox.dev/client-java/guides/chaos/)** — Per-inbox SMTP failure simulation (latency, drops, errors, greylisting, blackhole)
 
 ## Installation
 
@@ -49,7 +28,7 @@ Stop mocking your email stack. If your app sends real emails in production, it m
 
 ```groovy
 dependencies {
-    testImplementation 'com.vaultsandbox:client:0.9.0'
+    testImplementation 'com.vaultsandbox:client:0.9.1'
 }
 ```
 
@@ -59,7 +38,7 @@ dependencies {
 <dependency>
     <groupId>com.vaultsandbox</groupId>
     <artifactId>client</artifactId>
-    <version>0.9.0</version>
+    <version>0.9.1</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -317,6 +296,60 @@ Email email = inbox.awaitEmail(EmailFilter.any(), Duration.ofSeconds(2));
 if (email != null) {
     // Process the email
 }
+```
+
+### Creating Webhooks
+
+Register a webhook to receive HTTP notifications when emails arrive:
+
+```java
+import com.vaultsandbox.client.model.CreateWebhookRequest;
+import com.vaultsandbox.client.model.WebhookData;
+import com.vaultsandbox.client.model.WebhookEventType;
+
+Inbox inbox = client.createInbox();
+
+// Create a webhook that triggers when emails are received
+WebhookData webhook = inbox.createWebhook(
+    CreateWebhookRequest.builder()
+        .url("https://your-server.com/webhook")
+        .events(WebhookEventType.EMAIL_RECEIVED)
+        .description("Email notifications")
+        .build()
+);
+
+System.out.println("Webhook ID: " + webhook.getId());
+System.out.println("Secret: " + webhook.getSecret());  // Use this to verify signatures
+```
+
+### Chaos Engineering
+
+Test your application's resilience by injecting failures into email delivery:
+
+```java
+import com.vaultsandbox.client.model.ChaosConfig;
+import com.vaultsandbox.client.model.LatencyConfig;
+
+Inbox inbox = client.createInbox();
+
+// Enable chaos with latency injection (1-5 second delays on 50% of emails)
+ChaosConfig chaos = ChaosConfig.builder()
+    .enabled(true)
+    .latency(LatencyConfig.builder()
+        .enabled(true)
+        .minDelayMs(1000)
+        .maxDelayMs(5000)
+        .probability(0.5)
+        .build())
+    .build();
+
+inbox.setChaos(chaos);
+
+// Your tests now experience realistic network delays
+Email email = inbox.waitForEmail(Duration.ofSeconds(30));
+
+// Disable chaos when done
+inbox.disableChaos();
 ```
 
 ## API Reference

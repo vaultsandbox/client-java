@@ -1,16 +1,17 @@
 package com.vaultsandbox.client;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.vaultsandbox.client.crypto.Base64Url;
 import com.vaultsandbox.client.crypto.Decryptor;
 import com.vaultsandbox.client.crypto.Keypair;
 import com.vaultsandbox.client.crypto.SignatureVerifier;
+import com.vaultsandbox.client.exception.InboxExpiredException;
 import com.vaultsandbox.client.exception.InboxNotFoundException;
 import com.vaultsandbox.client.exception.SignatureVerificationException;
 import com.vaultsandbox.client.exception.TimeoutException;
 import com.vaultsandbox.client.exception.WebhookNotFoundException;
 import com.vaultsandbox.client.http.ApiClient;
+import com.vaultsandbox.client.internal.GsonProvider;
 import com.vaultsandbox.client.model.ChaosConfig;
 import com.vaultsandbox.client.model.CreateWebhookRequest;
 import com.vaultsandbox.client.model.DecryptedEmailContent;
@@ -38,6 +39,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -93,6 +95,7 @@ public class Inbox {
   private final DeliveryStrategy strategy;
   private final Duration defaultTimeout;
   private final Gson gson;
+  private final Runnable onDelete;
 
   Inbox(
       InboxData data,
@@ -102,6 +105,18 @@ public class Inbox {
       SignatureVerifier signatureVerifier,
       DeliveryStrategy strategy,
       Duration defaultTimeout) {
+    this(data, keypair, apiClient, decryptor, signatureVerifier, strategy, defaultTimeout, null);
+  }
+
+  Inbox(
+      InboxData data,
+      Keypair keypair,
+      ApiClient apiClient,
+      Decryptor decryptor,
+      SignatureVerifier signatureVerifier,
+      DeliveryStrategy strategy,
+      Duration defaultTimeout,
+      Runnable onDelete) {
     this.emailAddress = data.getEmailAddress();
     this.expiresAt = Instant.parse(data.getExpiresAt());
     this.inboxHash = data.getInboxHash();
@@ -114,7 +129,8 @@ public class Inbox {
     this.signatureVerifier = signatureVerifier;
     this.strategy = strategy;
     this.defaultTimeout = defaultTimeout;
-    this.gson = new GsonBuilder().create();
+    this.gson = GsonProvider.get();
+    this.onDelete = onDelete;
   }
 
   /**
@@ -128,6 +144,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public List<Email> listEmails() {
+    checkNotExpired();
     List<EmailData> emailsData = apiClient.listEmails(emailAddress, true);
     return emailsData.stream().map(this::decryptEmail).collect(Collectors.toList());
   }
@@ -143,6 +160,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public List<EmailMetadata> listEmailsMetadataOnly() {
+    checkNotExpired();
     List<EmailData> emailsData = apiClient.listEmails(emailAddress, false);
     return emailsData.stream().map(this::decryptToMetadata).collect(Collectors.toList());
   }
@@ -160,6 +178,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public Email getEmail(String emailId) {
+    checkNotExpired();
     EmailData data = apiClient.getEmail(emailAddress, emailId);
     return decryptEmail(data);
   }
@@ -171,12 +190,14 @@ public class Inbox {
    * headers, MIME boundaries, and encoded attachments.
    *
    * @param emailId the unique identifier of the email
-   * @return the raw email content as a string
+   * @return the raw email content as a string (never null)
    * @throws EmailNotFoundException if the email does not exist
+   * @throws IllegalStateException if raw content is not available for this email
    * @throws ApiException if the API request fails
    * @throws NetworkException if unable to connect to the server
    */
   public String getRawEmail(String emailId) {
+    checkNotExpired();
     RawEmailData data = apiClient.getRawEmail(emailAddress, emailId);
 
     // If raw content is directly available (legacy), return it
@@ -207,7 +228,7 @@ public class Inbox {
       }
     }
 
-    return null;
+    throw new IllegalStateException("Raw email content is not available for email " + emailId);
   }
 
   /**
@@ -219,6 +240,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public void markEmailAsRead(String emailId) {
+    checkNotExpired();
     apiClient.markAsRead(emailAddress, emailId);
   }
 
@@ -231,20 +253,26 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public void deleteEmail(String emailId) {
+    checkNotExpired();
     apiClient.deleteEmail(emailAddress, emailId);
   }
 
   /**
    * Deletes this inbox from the server.
    *
-   * <p>This permanently removes the inbox and all its emails from the server.
+   * <p>This permanently removes the inbox and all its emails from the server. If this inbox was
+   * created via {@link VaultSandboxClient}, it will also be removed from the client's registry.
    *
    * @throws InboxNotFoundException if the inbox does not exist
    * @throws ApiException if the API request fails
    * @throws NetworkException if unable to connect to the server
    */
   public void delete() {
+    checkNotExpired();
     apiClient.deleteInbox(emailAddress);
+    if (onDelete != null) {
+      onDelete.run();
+    }
   }
 
   /**
@@ -258,6 +286,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public SyncStatus getSyncStatus() {
+    checkNotExpired();
     return apiClient.getSyncStatus(emailAddress);
   }
 
@@ -407,6 +436,17 @@ public class Inbox {
     return keypair;
   }
 
+  /**
+   * Checks if this inbox has expired and throws an exception if so.
+   *
+   * @throws InboxExpiredException if the inbox has expired
+   */
+  private void checkNotExpired() {
+    if (Instant.now().isAfter(expiresAt)) {
+      throw new InboxExpiredException(emailAddress, expiresAt);
+    }
+  }
+
   // ==================== Export ====================
 
   /**
@@ -451,6 +491,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public WebhookData createWebhook(String url, List<WebhookEventType> events) {
+    checkNotExpired();
     CreateWebhookRequest request = new CreateWebhookRequest(url, events);
     return apiClient.createWebhook(emailAddress, request);
   }
@@ -466,6 +507,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public WebhookData createWebhook(CreateWebhookRequest request) {
+    checkNotExpired();
     return apiClient.createWebhook(emailAddress, request);
   }
 
@@ -479,6 +521,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public List<WebhookData> listWebhooks() {
+    checkNotExpired();
     WebhookListResponse response = apiClient.listWebhooks(emailAddress);
     return response.getWebhooks();
   }
@@ -493,6 +536,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public WebhookData getWebhook(String webhookId) {
+    checkNotExpired();
     return apiClient.getWebhook(emailAddress, webhookId);
   }
 
@@ -507,6 +551,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public WebhookData updateWebhook(String webhookId, UpdateWebhookRequest request) {
+    checkNotExpired();
     return apiClient.updateWebhook(emailAddress, webhookId, request);
   }
 
@@ -519,6 +564,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public void deleteWebhook(String webhookId) {
+    checkNotExpired();
     apiClient.deleteWebhook(emailAddress, webhookId);
   }
 
@@ -532,6 +578,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public TestWebhookResponse testWebhook(String webhookId) {
+    checkNotExpired();
     return apiClient.testWebhook(emailAddress, webhookId);
   }
 
@@ -548,6 +595,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public RotateSecretResponse rotateWebhookSecret(String webhookId) {
+    checkNotExpired();
     return apiClient.rotateWebhookSecret(emailAddress, webhookId);
   }
 
@@ -563,6 +611,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public ChaosConfig getChaos() {
+    checkNotExpired();
     return apiClient.getChaosConfig(emailAddress);
   }
 
@@ -592,6 +641,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public ChaosConfig setChaos(ChaosConfig config) {
+    checkNotExpired();
     return apiClient.setChaosConfig(emailAddress, config);
   }
 
@@ -602,6 +652,7 @@ public class Inbox {
    * @throws NetworkException if unable to connect to the server
    */
   public void disableChaos() {
+    checkNotExpired();
     apiClient.deleteChaosConfig(emailAddress);
   }
 
@@ -612,6 +663,9 @@ public class Inbox {
    *
    * @return the received email
    * @throws TimeoutException if no email arrives within the default timeout
+   * @throws InboxExpiredException if the inbox has expired
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
    */
   public Email waitForEmail() {
     return waitForEmail(EmailFilter.any());
@@ -623,6 +677,9 @@ public class Inbox {
    * @param filter the filter to match
    * @return the matching email
    * @throws TimeoutException if no matching email arrives within the default timeout
+   * @throws InboxExpiredException if the inbox has expired
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
    */
   public Email waitForEmail(EmailFilter filter) {
     return waitForEmail(filter, defaultTimeout);
@@ -635,6 +692,9 @@ public class Inbox {
    * @param timeout maximum time to wait
    * @return the matching email
    * @throws TimeoutException if no matching email arrives within timeout
+   * @throws InboxExpiredException if the inbox has expired
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
    */
   public Email waitForEmail(EmailFilter filter, Duration timeout) {
     return strategy.waitForEmail(this, filter, timeout);
@@ -648,6 +708,9 @@ public class Inbox {
    * @param options the wait options including filter, timeout, and optional poll interval
    * @return the matching email
    * @throws TimeoutException if no matching email arrives within timeout
+   * @throws InboxExpiredException if the inbox has expired
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
    */
   public Email waitForEmail(WaitOptions options) {
     Duration timeout = options.getTimeout() != null ? options.getTimeout() : defaultTimeout;
@@ -660,6 +723,9 @@ public class Inbox {
    * @param count the number of emails to wait for
    * @return list of received emails
    * @throws TimeoutException if not enough emails arrive within the default timeout
+   * @throws InboxExpiredException if the inbox has expired
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
    */
   public List<Email> waitForEmailCount(int count) {
     return waitForEmailCount(count, defaultTimeout);
@@ -672,6 +738,9 @@ public class Inbox {
    * @param timeout maximum time to wait
    * @return list of received emails
    * @throws TimeoutException if not enough emails arrive within timeout
+   * @throws InboxExpiredException if the inbox has expired
+   * @throws ApiException if the API request fails
+   * @throws NetworkException if unable to connect to the server
    */
   public List<Email> waitForEmailCount(int count, Duration timeout) {
     List<Email> collected = new ArrayList<>();
@@ -748,5 +817,18 @@ public class Inbox {
     } catch (TimeoutException e) {
       return null;
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    Inbox inbox = (Inbox) o;
+    return Objects.equals(emailAddress, inbox.emailAddress);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(emailAddress);
   }
 }

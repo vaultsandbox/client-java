@@ -1,7 +1,5 @@
 package com.vaultsandbox.client.crypto;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -40,7 +38,7 @@ public class HkdfDeriver {
     byte[] aadLength =
         ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(aad.length).array();
 
-    return concat(contextBytes, aadLength, aad);
+    return CryptoUtils.concat(contextBytes, aadLength, aad);
   }
 
   private byte[] sha256(byte[] data) {
@@ -49,18 +47,6 @@ public class HkdfDeriver {
       return digest.digest(data);
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException("SHA-256 not available", e);
-    }
-  }
-
-  private byte[] concat(byte[]... arrays) {
-    try {
-      ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      for (byte[] array : arrays) {
-        bos.write(array);
-      }
-      return bos.toByteArray();
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to concatenate byte arrays", e);
     }
   }
 }

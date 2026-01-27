@@ -13,6 +13,11 @@ import com.vaultsandbox.client.exception.TimeoutException;
 import com.vaultsandbox.client.exception.VaultSandboxException;
 import com.vaultsandbox.client.model.AuthResults;
 import com.vaultsandbox.client.model.AuthValidation;
+import com.vaultsandbox.client.model.ChaosConfig;
+import com.vaultsandbox.client.model.CreateWebhookRequest;
+import com.vaultsandbox.client.model.LatencyConfig;
+import com.vaultsandbox.client.model.WebhookData;
+import com.vaultsandbox.client.model.WebhookEventType;
 import com.vaultsandbox.client.strategy.EmailFilter;
 import com.vaultsandbox.client.strategy.Subscription;
 import java.time.Duration;
@@ -1228,6 +1233,167 @@ final class ReadmeExamplesTest {
 
       assertEquals("application/pdf", pdfAttachment.getContentType());
       assertTrue(pdfAttachment.getSize() > 0);
+    }
+  }
+
+  // ==================== Webhook Examples ====================
+
+  @Nested
+  @DisplayName("Creating Webhooks Examples")
+  class WebhookExamples {
+
+    private Inbox inbox;
+
+    @AfterEach
+    void tearDown() {
+      if (inbox != null) {
+        try {
+          sharedClient.deleteInbox(inbox.getEmailAddress());
+        } catch (Exception ignored) {
+        }
+      }
+    }
+
+    @Test
+    @DisplayName("Create webhook with builder pattern")
+    void testCreateWebhook() {
+      // README Example:
+      // WebhookData webhook = inbox.createWebhook(
+      //     CreateWebhookRequest.builder()
+      //         .url("https://your-server.com/webhook")
+      //         .events(WebhookEventType.EMAIL_RECEIVED)
+      //         .description("Email notifications")
+      //         .build()
+      // );
+
+      inbox = sharedClient.createInbox();
+
+      WebhookData webhook =
+          inbox.createWebhook(
+              CreateWebhookRequest.builder()
+                  .url("https://example.com/webhook")
+                  .events(WebhookEventType.EMAIL_RECEIVED)
+                  .description("Email notifications")
+                  .build());
+
+      assertNotNull(webhook);
+      assertNotNull(webhook.getId());
+      assertTrue(webhook.getId().startsWith("whk_"));
+      assertNotNull(webhook.getSecret());
+      assertTrue(webhook.getSecret().startsWith("whsec_"));
+      assertEquals("https://example.com/webhook", webhook.getUrl());
+      assertTrue(webhook.getEvents().contains(WebhookEventType.EMAIL_RECEIVED));
+    }
+
+    @Test
+    @DisplayName("WebhookEventType enum values exist")
+    void testWebhookEventTypes() {
+      // README mentions: EMAIL_RECEIVED
+
+      assertNotNull(WebhookEventType.EMAIL_RECEIVED);
+      assertNotNull(WebhookEventType.EMAIL_STORED);
+      assertNotNull(WebhookEventType.EMAIL_DELETED);
+    }
+  }
+
+  // ==================== Chaos Engineering Examples ====================
+
+  @Nested
+  @DisplayName("Chaos Engineering Examples")
+  class ChaosEngineeringExamples {
+
+    private Inbox inbox;
+    private boolean chaosEnabled;
+
+    @AfterEach
+    void tearDown() {
+      if (inbox != null) {
+        try {
+          sharedClient.deleteInbox(inbox.getEmailAddress());
+        } catch (Exception ignored) {
+        }
+      }
+    }
+
+    private void checkChaosEnabled() {
+      var serverInfo = sharedClient.getServerInfo();
+      chaosEnabled = serverInfo.isChaosEnabled();
+    }
+
+    @Test
+    @DisplayName("ChaosConfig builder pattern with latency")
+    void testChaosConfigBuilder() {
+      // README Example:
+      // ChaosConfig chaos = ChaosConfig.builder()
+      //     .enabled(true)
+      //     .latency(LatencyConfig.builder()
+      //         .enabled(true)
+      //         .minDelayMs(1000)
+      //         .maxDelayMs(5000)
+      //         .probability(0.5)
+      //         .build())
+      //     .build();
+
+      ChaosConfig chaos =
+          ChaosConfig.builder()
+              .enabled(true)
+              .latency(
+                  LatencyConfig.builder()
+                      .enabled(true)
+                      .minDelayMs(1000)
+                      .maxDelayMs(5000)
+                      .probability(0.5)
+                      .build())
+              .build();
+
+      assertNotNull(chaos);
+      assertTrue(chaos.isEnabled());
+      assertNotNull(chaos.getLatency());
+      assertTrue(chaos.getLatency().isEnabled());
+      assertEquals(Integer.valueOf(1000), chaos.getLatency().getMinDelayMs());
+      assertEquals(Integer.valueOf(5000), chaos.getLatency().getMaxDelayMs());
+      assertEquals(Double.valueOf(0.5), chaos.getLatency().getProbability());
+    }
+
+    @Test
+    @DisplayName("Set and disable chaos on inbox")
+    void testSetAndDisableChaos() {
+      checkChaosEnabled();
+      assumeTrue(chaosEnabled, "Chaos must be enabled on server");
+
+      // README Example:
+      // inbox.setChaos(chaos);
+      // inbox.disableChaos();
+
+      inbox = sharedClient.createInbox();
+
+      ChaosConfig chaos =
+          ChaosConfig.builder()
+              .enabled(true)
+              .latency(
+                  LatencyConfig.builder().enabled(true).minDelayMs(100).maxDelayMs(500).build())
+              .build();
+
+      ChaosConfig result = inbox.setChaos(chaos);
+
+      assertNotNull(result);
+      assertTrue(result.isEnabled());
+      assertNotNull(result.getLatency());
+
+      // Disable chaos
+      inbox.disableChaos();
+
+      ChaosConfig disabled = inbox.getChaos();
+      assertFalse(disabled.isEnabled());
+    }
+
+    @Test
+    @DisplayName("ChaosConfig.disabled() factory method")
+    void testChaosDisabled() {
+      ChaosConfig disabled = ChaosConfig.disabled();
+
+      assertNotNull(disabled);
+      assertFalse(disabled.isEnabled());
     }
   }
 }

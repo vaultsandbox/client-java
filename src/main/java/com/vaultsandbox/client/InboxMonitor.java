@@ -57,24 +57,22 @@ public class InboxMonitor implements Closeable {
     callbacks.add(callback);
 
     // Subscribe to all inboxes if not already
-    if (subscriptions.isEmpty()) {
-      synchronized (subscriptions) {
-        if (subscriptions.isEmpty()) {
-          for (Inbox inbox : inboxes) {
-            Subscription sub =
-                strategy.subscribe(
-                    inbox,
-                    email -> {
-                      for (Consumer<Email> cb : callbacks) {
-                        try {
-                          cb.accept(email);
-                        } catch (Exception e) {
-                          log.warn("Email callback threw exception", e);
-                        }
+    synchronized (subscriptions) {
+      if (subscriptions.isEmpty()) {
+        for (Inbox inbox : inboxes) {
+          Subscription sub =
+              strategy.subscribe(
+                  inbox,
+                  email -> {
+                    for (Consumer<Email> cb : callbacks) {
+                      try {
+                        cb.accept(email);
+                      } catch (Exception e) {
+                        log.warn("Email callback threw exception", e);
                       }
-                    });
-            subscriptions.add(sub);
-          }
+                    }
+                  });
+          subscriptions.add(sub);
         }
       }
     }

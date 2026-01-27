@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -109,12 +110,17 @@ public class PollingStrategy implements DeliveryStrategy {
       }
 
       // Add jitter to prevent thundering herd
-      long jitter = (long) (Math.random() * jitterFactor * currentBackoff);
+      long jitter =
+          (long) (ThreadLocalRandom.current().nextDouble() * jitterFactor * currentBackoff);
       long remainingMs = Duration.between(Instant.now(), deadline).toMillis();
       long sleepTime = Math.min(currentBackoff + jitter, remainingMs);
 
       if (sleepTime > 0) {
-        sleep(sleepTime);
+        if (!sleep(sleepTime)) {
+          // Thread was interrupted, exit polling loop
+          log.debug("Polling interrupted for inbox {}", inbox.getEmailAddress());
+          throw new TimeoutException("Email wait interrupted");
+        }
       }
     }
 
@@ -168,7 +174,10 @@ public class PollingStrategy implements DeliveryStrategy {
             initialInterval.toMillis(),
             TimeUnit.MILLISECONDS);
 
-    pollingTasks.put(key, task);
+    ScheduledFuture<?> existing = pollingTasks.put(key, task);
+    if (existing != null) {
+      existing.cancel(false);
+    }
 
     return () -> {
       ScheduledFuture<?> t = pollingTasks.remove(key);
@@ -196,11 +205,19 @@ public class PollingStrategy implements DeliveryStrategy {
     }
   }
 
-  private void sleep(long millis) {
+  /**
+   * Sleep for the specified duration.
+   *
+   * @param millis milliseconds to sleep
+   * @return true if sleep completed, false if interrupted
+   */
+  private boolean sleep(long millis) {
     try {
       Thread.sleep(millis);
+      return true;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      return false;
     }
   }
 }

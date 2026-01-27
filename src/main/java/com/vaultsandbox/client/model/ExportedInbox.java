@@ -126,9 +126,11 @@ public class ExportedInbox {
     }
 
     // Step 8 per spec §10.1: Validate timestamps
+    // Parse expiresAt once and reuse for both format validation and expiration check
+    Instant expiresInstant = null;
     if (expiresAt != null) {
       try {
-        Instant.parse(expiresAt);
+        expiresInstant = Instant.parse(expiresAt);
       } catch (DateTimeParseException e) {
         errors.add("expiresAt must be valid ISO 8601");
       }
@@ -142,16 +144,9 @@ public class ExportedInbox {
       }
     }
 
-    // Check expiration
-    if (expiresAt != null) {
-      try {
-        Instant expires = Instant.parse(expiresAt);
-        if (expires.isBefore(Instant.now())) {
-          errors.add("inbox has expired");
-        }
-      } catch (DateTimeParseException e) {
-        // Already caught above
-      }
+    // Check expiration using the already-parsed instant
+    if (expiresInstant != null && expiresInstant.isBefore(Instant.now())) {
+      errors.add("inbox has expired");
     }
 
     if (!errors.isEmpty()) {
