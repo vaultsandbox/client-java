@@ -256,9 +256,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      // Small delay to ensure SSE is connected
-      Thread.sleep(500);
-
       // Send email
       smtp.sendEmail(inbox.getEmailAddress(), "sender@test.com", subject, body);
 
@@ -292,8 +289,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send HTML email
       smtp.sendHtmlEmail(inbox.getEmailAddress(), "html@test.com", subject, text, html);
 
@@ -325,8 +320,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send verification code
       smtp.sendVerificationCode(inbox.getEmailAddress(), code);
 
@@ -357,8 +350,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send 3 emails
       for (int i = 1; i <= 3; i++) {
         smtp.sendEmail(
@@ -368,10 +359,8 @@ class EmailFlowIT {
             "Email body " + i);
       }
 
-      // Wait for all emails
-      Thread.sleep(5000); // Give time for all emails to arrive
-
-      List<Email> emails = inbox.listEmails();
+      // Wait for all emails using deterministic wait
+      List<Email> emails = inbox.waitForEmailCount(3, Duration.ofSeconds(30));
 
       assertTrue(emails.size() >= 3, "Expected at least 3 emails, got " + emails.size());
     } finally {
@@ -394,25 +383,24 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send emails with different subjects
       smtp.sendEmail(inbox.getEmailAddress(), "a@test.com", "Welcome " + uniqueId, "Body 1");
       smtp.sendEmail(inbox.getEmailAddress(), "b@test.com", "Invoice " + uniqueId, "Body 2");
       smtp.sendEmail(
           inbox.getEmailAddress(), "c@test.com", "Welcome " + uniqueId + " again", "Body 3");
 
-      // Wait for the invoice email specifically
+      // Wait for all 3 emails to arrive
+      List<Email> allEmails = inbox.waitForEmailCount(3, Duration.ofSeconds(30));
+
+      // Find the invoice email
       Email invoiceEmail =
-          inbox.awaitEmail(
-              EmailFilter.builder().subject("Invoice").build(), Duration.ofSeconds(30));
+          allEmails.stream()
+              .filter(e -> e.getSubject() != null && e.getSubject().contains("Invoice"))
+              .findFirst()
+              .orElse(null);
 
       assertNotNull(invoiceEmail);
       assertTrue(invoiceEmail.getSubject().contains("Invoice"));
-
-      // Filter for welcome emails
-      Thread.sleep(2000); // Ensure all emails arrived
-      List<Email> allEmails = inbox.listEmails();
       EmailFilter welcomeFilter = EmailFilter.builder().subject("Welcome").build();
       long welcomeCount = allEmails.stream().filter(welcomeFilter::matches).count();
 
@@ -437,8 +425,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send email
       smtp.sendEmail(inbox.getEmailAddress(), "test@test.com", "Read test " + uniqueId, "Body");
 
@@ -475,8 +461,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send email
       smtp.sendEmail(inbox.getEmailAddress(), "test@test.com", "Delete test " + uniqueId, "Body");
 
@@ -562,8 +546,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send 3 emails
       for (int i = 1; i <= 3; i++) {
         smtp.sendEmail(
@@ -597,8 +579,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send only 1 email
       smtp.sendEmail(
           inbox.getEmailAddress(), "single@test.com", "Single " + uniqueId, "Single email body");
@@ -628,8 +608,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send 5 emails with small delays to prevent rate limiting
       for (int i = 1; i <= 5; i++) {
         smtp.sendEmail(
@@ -637,7 +615,7 @@ class EmailFlowIT {
             "more" + i + "@test.com",
             "More Test " + uniqueId + " #" + i,
             "Email body " + i);
-        Thread.sleep(200); // Small delay between sends
+        Thread.sleep(200); // Small delay between sends to prevent rate limiting
       }
 
       // Wait for only 3 emails
@@ -667,8 +645,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send email with attachment
       smtp.sendEmailWithAttachment(
           inbox.getEmailAddress(),
@@ -727,8 +703,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send email with multiple attachments
       smtp.sendEmailWithAttachments(
           inbox.getEmailAddress(),
@@ -772,8 +746,6 @@ class EmailFlowIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send email with text attachment
       smtp.sendEmailWithAttachment(
           inbox.getEmailAddress(),

@@ -238,9 +238,6 @@ class SseIT {
             });
 
     try {
-      // Wait for SSE connection to establish
-      Thread.sleep(500);
-
       // Send email
       smtp.sendEmail(
           inbox.getEmailAddress(),
@@ -296,8 +293,6 @@ class SseIT {
             });
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(
           inbox.getEmailAddress(), "multicallback@test.com", "Multi Callback " + uniqueId, "Body");
 
@@ -386,8 +381,6 @@ class SseIT {
             });
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(
           inbox.getEmailAddress(), "content@test.com", "Content Check " + uniqueId, expectedBody);
 
@@ -434,8 +427,6 @@ class SseIT {
         });
 
     try {
-      Thread.sleep(500);
-
       // Send to both inboxes
       smtp.sendEmail(
           inbox1.getEmailAddress(), "monitor1@test.com", "Monitor Test 1 " + uniqueId, "Body 1");
@@ -586,8 +577,6 @@ class SseIT {
             });
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(
           inbox.getEmailAddress(), "exception@test.com", "Exception Test " + uniqueId, "Body");
 
@@ -624,13 +613,9 @@ class SseIT {
                       com.vaultsandbox.client.strategy.EmailFilter.subjectContains(targetId),
                       java.time.Duration.ofSeconds(20)));
 
-      Thread.sleep(500);
-
       // Send email with different subject first
       smtp.sendEmail(
           inbox.getEmailAddress(), "other@test.com", "Other Subject " + otherId, "Body 1");
-
-      Thread.sleep(500);
 
       // Send email with target subject
       smtp.sendEmail(
@@ -665,12 +650,8 @@ class SseIT {
                       com.vaultsandbox.client.strategy.EmailFilter.from("specialsender"),
                       java.time.Duration.ofSeconds(20)));
 
-      Thread.sleep(500);
-
       // Send from different address first
       smtp.sendEmail(inbox.getEmailAddress(), "other@test.com", "Other " + uniqueId, "Body 1");
-
-      Thread.sleep(500);
 
       // Send from target address
       smtp.sendEmail(
@@ -777,8 +758,6 @@ class SseIT {
                 }
               });
 
-      Thread.sleep(500);
-
       // Send single email
       smtp.sendEmail(
           inbox.getEmailAddress(), "dedup@test.com", "Dedup Test " + uniqueId, "Body content");
@@ -814,8 +793,6 @@ class SseIT {
                       com.vaultsandbox.client.strategy.EmailFilter.matching(
                           e -> e.getText() != null && e.getText().contains(uniqueCode)),
                       java.time.Duration.ofSeconds(20)));
-
-      Thread.sleep(500);
 
       // Send email with unique code in body
       smtp.sendEmail(
@@ -868,8 +845,6 @@ class SseIT {
                   latch.countDown();
                 }
               });
-
-      Thread.sleep(500);
 
       // Send to each inbox
       smtp.sendEmail(inbox1.getEmailAddress(), "multi1@test.com", "Multi1 " + uniqueId1, "Body 1");
@@ -1073,10 +1048,14 @@ class SseIT {
           "Pre-existing Email " + uniqueId,
           "This email exists before waitForEmail is called");
 
-      // Wait for email to definitely arrive
-      Thread.sleep(3000);
+      // Wait for email to arrive using deterministic method
+      Email arrived =
+          inbox.awaitEmail(
+              com.vaultsandbox.client.strategy.EmailFilter.subjectContains(uniqueId),
+              java.time.Duration.ofSeconds(15));
+      assertNotNull(arrived, "Email should arrive");
 
-      // Verify email is there
+      // Verify email is in list
       var emails = inbox.listEmails();
       assertTrue(
           emails.stream()

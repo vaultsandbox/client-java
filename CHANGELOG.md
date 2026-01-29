@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.2] - 2026-01-29
+
+### Improved
+
+- Enabled parallel test execution for faster CI
+- Removed 51 unnecessary Thread.sleep() calls from integration tests
+- Replaced arbitrary waits with deterministic SDK methods (waitForEmailCount, awaitEmail)
+
 ## [0.9.1] - 2026-01-26
 
 ### Added

@@ -85,8 +85,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendHtmlEmailWithLinks(
           inbox.getEmailAddress(), "links@test.com", "Links Test " + uniqueId, text, html);
 
@@ -129,8 +127,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendHtmlEmail(
           inbox.getEmailAddress(), "multilinks@test.com", "Multi Links " + uniqueId, "Plain", html);
 
@@ -163,8 +159,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(
           inbox.getEmailAddress(),
           "headers@test.com",
@@ -202,8 +196,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), expectedFrom, expectedSubject, "Body content");
 
       Email email =
@@ -239,8 +231,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), "auth@test.com", "Auth Test " + uniqueId, "Body");
 
       Email email =
@@ -277,8 +267,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(
           inbox.getEmailAddress(), "validate@test.com", "Validate Test " + uniqueId, "Body");
 
@@ -325,8 +313,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send from a domain we don't control - should fail SPF/DKIM
       smtp.sendEmail(
           inbox.getEmailAddress(),
@@ -374,8 +360,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), "raw@test.com", subject, body);
 
       Email email =
@@ -410,8 +394,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(
           inbox.getEmailAddress(), "rawobj@test.com", "Raw Via Email " + uniqueId, "Body");
 
@@ -449,8 +431,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), "getbyid@test.com", subject, body);
 
       Email awaited =
@@ -487,8 +467,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), "markread@test.com", "Mark Read " + uniqueId, "Body");
 
       Email email =
@@ -522,8 +500,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), "delete@test.com", "Delete " + uniqueId, "Body");
 
       Email email =
@@ -570,8 +546,6 @@ class EmailContentIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendHtmlEmail(inbox.getEmailAddress(), "listfull@test.com", subject, textBody, htmlBody);
 
       // Wait for email to arrive

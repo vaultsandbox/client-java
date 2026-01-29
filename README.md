@@ -28,7 +28,7 @@ Stop mocking. Test email like production.
 
 ```groovy
 dependencies {
-    testImplementation 'com.vaultsandbox:client:0.9.1'
+    testImplementation 'com.vaultsandbox:client:0.9.2'
 }
 ```
 
@@ -38,7 +38,7 @@ dependencies {
 <dependency>
     <groupId>com.vaultsandbox</groupId>
     <artifactId>client</artifactId>
-    <version>0.9.1</version>
+    <version>0.9.2</version>
     <scope>test</scope>
 </dependency>
 ```

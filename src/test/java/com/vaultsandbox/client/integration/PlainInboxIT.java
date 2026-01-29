@@ -150,8 +150,6 @@ class PlainInboxIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), "plain@test.com", subject, body);
 
       Email email =
@@ -184,8 +182,6 @@ class PlainInboxIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendHtmlEmail(
           inbox.getEmailAddress(), "plainlist@test.com", subject, textBody, htmlBody);
 
@@ -225,8 +221,6 @@ class PlainInboxIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), "plainmeta@test.com", subject, "Body");
 
       Email awaited =
@@ -265,8 +259,6 @@ class PlainInboxIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(
           inbox.getEmailAddress(), "plainbyid@test.com", "Plain By ID " + uniqueId, "Body content");
 
@@ -303,8 +295,6 @@ class PlainInboxIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), "plainraw@test.com", subject, "Raw body content");
 
       Email email =
@@ -339,8 +329,6 @@ class PlainInboxIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(
           inbox.getEmailAddress(), "plainrawobj@test.com", "Plain Raw Obj " + uniqueId, "Body");
 
@@ -516,8 +504,6 @@ class PlainInboxIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(
           inbox.getEmailAddress(), "plainread@test.com", "Plain Read " + uniqueId, "Body");
 
@@ -552,8 +538,6 @@ class PlainInboxIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), "plaindel@test.com", "Plain Del " + uniqueId, "Body");
 
       Email email =
@@ -600,8 +584,6 @@ class PlainInboxIT {
     var encryptedSub = encryptedInbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       // Send same email to both inboxes
       smtp.sendEmail(plainInbox.getEmailAddress(), "compare@test.com", subject, body);
       smtp.sendEmail(encryptedInbox.getEmailAddress(), "compare@test.com", subject, body);
@@ -675,8 +657,6 @@ class PlainInboxIT {
     var subscription = inbox.onNewEmail(e -> {});
 
     try {
-      Thread.sleep(500);
-
       smtp.sendEmail(inbox.getEmailAddress(), "auth@test.com", "Plain Auth " + uniqueId, "Body");
 
       Email email =
