@@ -144,6 +144,7 @@ public class ApiClient {
       String emailAddress,
       Boolean emailAuth,
       String encryption,
+      String persistence,
       Boolean spamAnalysis,
       ChaosConfig chaos) {
     HashMap<String, Object> payload = new HashMap<>();
@@ -162,6 +163,9 @@ public class ApiClient {
     }
     if (encryption != null) {
       payload.put("encryption", encryption);
+    }
+    if (persistence != null) {
+      payload.put("persistence", persistence);
     }
     if (spamAnalysis != null) {
       payload.put("spamAnalysis", spamAnalysis);

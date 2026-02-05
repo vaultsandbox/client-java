@@ -162,6 +162,7 @@ public final class VaultSandboxClient implements Closeable {
             options.getEmailAddress(),
             options.getEmailAuth(),
             options.getEncryption(),
+            options.getPersistence(),
             options.getSpamAnalysis(),
             options.getChaos());
 
@@ -313,6 +314,7 @@ public final class VaultSandboxClient implements Closeable {
     exported.setExpiresAt(inbox.getExpiresAt().toString());
     exported.setInboxHash(inbox.getHash());
     exported.setEncrypted(inbox.isEncrypted());
+    exported.setPersistent(inbox.isPersistent());
     if (inbox.isEncrypted()) {
       exported.setServerSigPk(inbox.getServerSigPk());
       // Per spec §9.4: public key is NOT included (derived from secret key)
@@ -409,6 +411,7 @@ public final class VaultSandboxClient implements Closeable {
     inboxData.setInboxHash(data.getInboxHash());
     inboxData.setServerSigPk(data.getServerSigPk());
     inboxData.setEncrypted(data.getEncrypted());
+    inboxData.setPersistent(data.getPersistent());
     inboxData.setEmailAuth(data.getEmailAuth());
 
     String emailAddress = data.getEmailAddress();

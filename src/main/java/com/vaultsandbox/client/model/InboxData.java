@@ -7,6 +7,7 @@ public class InboxData {
   private String serverSigPk;
   private Boolean emailAuth;
   private Boolean encrypted;
+  private Boolean persistent;
 
   public InboxData() {}
 
@@ -78,5 +79,30 @@ public class InboxData {
   public boolean isEncrypted() {
     // Default to encrypted for backward compatibility
     return encrypted == null || encrypted;
+  }
+
+  /**
+   * Returns whether this inbox is persistent.
+   *
+   * @return {@code true} if persistent, {@code false} if ephemeral, {@code null} if not specified
+   */
+  public Boolean getPersistent() {
+    return persistent;
+  }
+
+  public void setPersistent(Boolean persistent) {
+    this.persistent = persistent;
+  }
+
+  /**
+   * Returns whether this inbox uses persistence.
+   *
+   * <p>This is a convenience method that defaults to {@code false} for new feature when the
+   * persistent field is not set.
+   *
+   * @return {@code true} if persistent, {@code false} if not specified or explicitly ephemeral
+   */
+  public boolean isPersistent() {
+    return persistent != null && persistent;
   }
 }

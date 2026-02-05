@@ -50,6 +50,10 @@ public class ExportedInbox {
   // Null defaults to true for backward compatibility
   private Boolean emailAuth;
 
+  // Whether this inbox is persistent
+  // Null defaults to false (new feature, no backward compat needed)
+  private Boolean persistent;
+
   // Size constants per spec Appendix B
   private static final int MLKEM_SECRET_KEY_SIZE = 2400;
   private static final int MLKEM_PUBLIC_KEY_SIZE = 1184;
@@ -273,5 +277,29 @@ public class ExportedInbox {
    */
   public boolean isEmailAuth() {
     return emailAuth == null || emailAuth;
+  }
+
+  /**
+   * Returns whether this inbox is persistent.
+   *
+   * @return {@code true} if persistent, {@code false} if ephemeral, {@code null} if not specified
+   */
+  public Boolean getPersistent() {
+    return persistent;
+  }
+
+  public void setPersistent(Boolean persistent) {
+    this.persistent = persistent;
+  }
+
+  /**
+   * Returns whether this inbox uses persistence.
+   *
+   * <p>Defaults to {@code false} (new feature, no backward compatibility needed).
+   *
+   * @return {@code true} if persistent, {@code false} if not specified or explicitly ephemeral
+   */
+  public boolean isPersistent() {
+    return persistent != null && persistent;
   }
 }

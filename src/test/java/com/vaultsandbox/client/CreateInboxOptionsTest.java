@@ -21,6 +21,7 @@ class CreateInboxOptionsTest {
     assertNull(options.getEmailAuth());
     assertNull(options.getEncryption());
     assertNull(options.getSpamAnalysis());
+    assertNull(options.getPersistence());
   }
 
   @Test
@@ -32,6 +33,7 @@ class CreateInboxOptionsTest {
     assertNull(options.getEmailAuth());
     assertNull(options.getEncryption());
     assertNull(options.getSpamAnalysis());
+    assertNull(options.getPersistence());
   }
 
   // ==================== Builder Methods Tests ====================
@@ -243,5 +245,51 @@ class CreateInboxOptionsTest {
 
     assertEquals("plain", options.getEncryption());
     assertEquals(Boolean.FALSE, options.getSpamAnalysis());
+  }
+
+  // ==================== Persistence Builder Tests ====================
+
+  @Test
+  void testPersistentBuilderMethod() {
+    CreateInboxOptions options = CreateInboxOptions.builder().persistent().build();
+
+    assertEquals("persistent", options.getPersistence());
+  }
+
+  @Test
+  void testEphemeralBuilderMethod() {
+    CreateInboxOptions options = CreateInboxOptions.builder().ephemeral().build();
+
+    assertEquals("ephemeral", options.getPersistence());
+  }
+
+  @Test
+  void testPersistenceStringBuilder() {
+    CreateInboxOptions options = CreateInboxOptions.builder().persistence("persistent").build();
+
+    assertEquals("persistent", options.getPersistence());
+  }
+
+  @Test
+  void testPersistenceStringBuilderNull() {
+    CreateInboxOptions options = CreateInboxOptions.builder().persistence(null).build();
+
+    assertNull(options.getPersistence());
+  }
+
+  @Test
+  void testPersistentWithOtherOptions() {
+    CreateInboxOptions options =
+        CreateInboxOptions.builder()
+            .emailAddress("persist@example.com")
+            .ttl(Duration.ofHours(1))
+            .persistent()
+            .encrypted()
+            .build();
+
+    assertEquals("persist@example.com", options.getEmailAddress());
+    assertEquals(Duration.ofHours(1), options.getTtl());
+    assertEquals("persistent", options.getPersistence());
+    assertEquals("encrypted", options.getEncryption());
   }
 }
