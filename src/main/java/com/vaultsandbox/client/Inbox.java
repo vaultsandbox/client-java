@@ -87,6 +87,7 @@ public class Inbox {
   private final String serverSigPk;
   private final Keypair keypair;
   private final boolean encrypted;
+  private final boolean persistent;
   private final boolean emailAuth;
 
   private final ApiClient apiClient;
@@ -123,6 +124,7 @@ public class Inbox {
     this.serverSigPk = data.getServerSigPk();
     this.keypair = keypair;
     this.encrypted = data.isEncrypted();
+    this.persistent = data.isPersistent();
     this.emailAuth = data.getEmailAuth() != null && data.getEmailAuth();
     this.apiClient = apiClient;
     this.decryptor = decryptor;
@@ -423,6 +425,18 @@ public class Inbox {
   }
 
   /**
+   * Returns whether this inbox is persistent.
+   *
+   * <p>Persistent inboxes retain their data across server restarts. Ephemeral inboxes may lose data
+   * on restart.
+   *
+   * @return {@code true} if persistent, {@code false} if ephemeral
+   */
+  public boolean isPersistent() {
+    return persistent;
+  }
+
+  /**
    * Returns whether email authentication checks are enabled for this inbox. When false,
    * SPF/DKIM/DMARC/ReverseDNS checks return 'skipped'.
    *
@@ -467,6 +481,7 @@ public class Inbox {
     exported.setExpiresAt(expiresAt.toString());
     exported.setInboxHash(inboxHash);
     exported.setEncrypted(encrypted);
+    exported.setPersistent(persistent);
     exported.setEmailAuth(emailAuth);
     if (encrypted) {
       exported.setServerSigPk(serverSigPk);

@@ -11,7 +11,9 @@ public class ServerInfo {
   private boolean sseConsole;
   private List<String> allowedDomains;
   private String encryptionPolicy;
+  private String persistencePolicy;
   private boolean spamAnalysisEnabled;
+  private boolean persistentGlobalWebhooks;
   private boolean chaosEnabled;
 
   // Legacy fields for backward compatibility
@@ -125,6 +127,51 @@ public class ServerInfo {
     return encryptionPolicy == null
         || "always".equals(encryptionPolicy)
         || "enabled".equals(encryptionPolicy);
+  }
+
+  /**
+   * Returns the server's persistence policy.
+   *
+   * <p>Policy values:
+   *
+   * <ul>
+   *   <li>{@code "always"} - All inboxes are persistent, no override allowed
+   *   <li>{@code "enabled"} - Default persistent, can request ephemeral
+   *   <li>{@code "disabled"} - Default ephemeral, can request persistent
+   *   <li>{@code "never"} - All inboxes are ephemeral, no override allowed
+   * </ul>
+   *
+   * @return the persistence policy, or {@code null} if not specified (defaults to non-persistent)
+   */
+  public String getPersistencePolicy() {
+    return persistencePolicy;
+  }
+
+  /**
+   * Returns whether global webhooks are persistent on this server.
+   *
+   * @return {@code true} if global webhooks are persistent
+   */
+  public boolean isPersistentGlobalWebhooks() {
+    return persistentGlobalWebhooks;
+  }
+
+  /**
+   * Returns whether persistence can be overridden per-inbox.
+   *
+   * @return {@code true} if policy is "enabled" or "disabled"
+   */
+  public boolean canOverridePersistence() {
+    return "enabled".equals(persistencePolicy) || "disabled".equals(persistencePolicy);
+  }
+
+  /**
+   * Returns whether persistence is the default for new inboxes.
+   *
+   * @return {@code true} if policy is "always" or "enabled"
+   */
+  public boolean isDefaultPersistent() {
+    return "always".equals(persistencePolicy) || "enabled".equals(persistencePolicy);
   }
 
   public static class Limits {

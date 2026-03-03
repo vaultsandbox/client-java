@@ -26,6 +26,7 @@ public final class CreateInboxOptions {
   private final Duration ttl;
   private final Boolean emailAuth;
   private final String encryption;
+  private final String persistence;
   private final Boolean spamAnalysis;
   private final ChaosConfig chaos;
 
@@ -34,12 +35,14 @@ public final class CreateInboxOptions {
       Duration ttl,
       Boolean emailAuth,
       String encryption,
+      String persistence,
       Boolean spamAnalysis,
       ChaosConfig chaos) {
     this.emailAddress = emailAddress;
     this.ttl = ttl;
     this.emailAuth = emailAuth;
     this.encryption = encryption;
+    this.persistence = persistence;
     this.spamAnalysis = spamAnalysis;
     this.chaos = chaos;
   }
@@ -50,7 +53,7 @@ public final class CreateInboxOptions {
    * @return default options
    */
   public static CreateInboxOptions defaults() {
-    return new CreateInboxOptions(null, null, null, null, null, null);
+    return new CreateInboxOptions(null, null, null, null, null, null, null);
   }
 
   /**
@@ -132,6 +135,25 @@ public final class CreateInboxOptions {
   }
 
   /**
+   * Returns the persistence setting, if set.
+   *
+   * <p>Values:
+   *
+   * <ul>
+   *   <li>{@code "persistent"} - Request a persistent inbox
+   *   <li>{@code "ephemeral"} - Request an ephemeral inbox
+   *   <li>{@code null} - Use server default based on persistence policy
+   * </ul>
+   *
+   * <p>The server may reject the request if the persistence policy does not allow overrides.
+   *
+   * @return the persistence setting, or {@code null} if using server default
+   */
+  public String getPersistence() {
+    return persistence;
+  }
+
+  /**
    * Returns the spam analysis setting, if set.
    *
    * <p>When {@code true}, spam analysis is enabled for emails to this inbox. When {@code false},
@@ -176,6 +198,7 @@ public final class CreateInboxOptions {
     private Duration ttl;
     private Boolean emailAuth;
     private String encryption;
+    private String persistence;
     private Boolean spamAnalysis;
     private ChaosConfig chaos;
 
@@ -262,6 +285,48 @@ public final class CreateInboxOptions {
     }
 
     /**
+     * Sets the persistence mode for this inbox.
+     *
+     * <p>Values:
+     *
+     * <ul>
+     *   <li>{@code "persistent"} - Request a persistent inbox
+     *   <li>{@code "ephemeral"} - Request an ephemeral inbox
+     *   <li>{@code null} - Use server default based on persistence policy
+     * </ul>
+     *
+     * <p>The server may reject the request if the persistence policy does not allow overrides.
+     *
+     * @param persistence the persistence mode ("persistent", "ephemeral", or null for server
+     *     default)
+     * @return this builder
+     */
+    public Builder persistence(String persistence) {
+      this.persistence = persistence;
+      return this;
+    }
+
+    /**
+     * Convenience method to request a persistent inbox.
+     *
+     * @return this builder
+     */
+    public Builder persistent() {
+      this.persistence = "persistent";
+      return this;
+    }
+
+    /**
+     * Convenience method to request an ephemeral inbox.
+     *
+     * @return this builder
+     */
+    public Builder ephemeral() {
+      this.persistence = "ephemeral";
+      return this;
+    }
+
+    /**
      * Sets whether spam analysis is enabled for this inbox.
      *
      * <p>When {@code true}, spam analysis is performed on incoming emails. When {@code false}, spam
@@ -295,7 +360,8 @@ public final class CreateInboxOptions {
      * @return a new CreateInboxOptions instance
      */
     public CreateInboxOptions build() {
-      return new CreateInboxOptions(emailAddress, ttl, emailAuth, encryption, spamAnalysis, chaos);
+      return new CreateInboxOptions(
+          emailAddress, ttl, emailAuth, encryption, persistence, spamAnalysis, chaos);
     }
   }
 }

@@ -174,6 +174,130 @@ class ModelTest {
     assertEquals(86400, limits.getInboxTtlSeconds());
   }
 
+  // ==================== ServerInfo Encryption Policy Tests ====================
+
+  @Test
+  void testServerInfoEncryptionPolicy() {
+    String json = """
+        {"encryptionPolicy": "always"}
+        """;
+    ServerInfo info = GSON.fromJson(json, ServerInfo.class);
+
+    assertEquals("always", info.getEncryptionPolicy());
+    assertFalse(info.canOverrideEncryption());
+    assertTrue(info.isDefaultEncrypted());
+  }
+
+  // ==================== ServerInfo Persistence Policy Tests ====================
+
+  @Test
+  void testServerInfoPersistencePolicy() {
+    String json =
+        """
+        {
+          "persistencePolicy": "enabled",
+          "persistentGlobalWebhooks": true
+        }
+        """;
+    ServerInfo info = GSON.fromJson(json, ServerInfo.class);
+
+    assertEquals("enabled", info.getPersistencePolicy());
+    assertTrue(info.isPersistentGlobalWebhooks());
+    assertTrue(info.canOverridePersistence());
+    assertTrue(info.isDefaultPersistent());
+  }
+
+  @Test
+  void testServerInfoPersistencePolicyAlways() {
+    String json = """
+        {"persistencePolicy": "always"}
+        """;
+    ServerInfo info = GSON.fromJson(json, ServerInfo.class);
+
+    assertEquals("always", info.getPersistencePolicy());
+    assertFalse(info.canOverridePersistence());
+    assertTrue(info.isDefaultPersistent());
+  }
+
+  @Test
+  void testServerInfoPersistencePolicyDisabled() {
+    String json = """
+        {"persistencePolicy": "disabled"}
+        """;
+    ServerInfo info = GSON.fromJson(json, ServerInfo.class);
+
+    assertEquals("disabled", info.getPersistencePolicy());
+    assertTrue(info.canOverridePersistence());
+    assertFalse(info.isDefaultPersistent());
+  }
+
+  @Test
+  void testServerInfoPersistencePolicyNever() {
+    String json = """
+        {"persistencePolicy": "never"}
+        """;
+    ServerInfo info = GSON.fromJson(json, ServerInfo.class);
+
+    assertEquals("never", info.getPersistencePolicy());
+    assertFalse(info.canOverridePersistence());
+    assertFalse(info.isDefaultPersistent());
+  }
+
+  @Test
+  void testServerInfoPersistencePolicyNull() {
+    String json = "{}";
+    ServerInfo info = GSON.fromJson(json, ServerInfo.class);
+
+    assertNull(info.getPersistencePolicy());
+    assertFalse(info.canOverridePersistence());
+    assertFalse(info.isDefaultPersistent());
+    assertFalse(info.isPersistentGlobalWebhooks());
+  }
+
+  // ==================== InboxData Persistent Tests ====================
+
+  @Test
+  void testInboxDataPersistentTrue() {
+    String json = """
+        {"persistent": true}
+        """;
+    InboxData inboxData = GSON.fromJson(json, InboxData.class);
+
+    assertEquals(Boolean.TRUE, inboxData.getPersistent());
+    assertTrue(inboxData.isPersistent());
+  }
+
+  @Test
+  void testInboxDataPersistentFalse() {
+    String json = """
+        {"persistent": false}
+        """;
+    InboxData inboxData = GSON.fromJson(json, InboxData.class);
+
+    assertEquals(Boolean.FALSE, inboxData.getPersistent());
+    assertFalse(inboxData.isPersistent());
+  }
+
+  @Test
+  void testInboxDataPersistentNull() {
+    String json = """
+        {"emailAddress": "test@example.com"}
+        """;
+    InboxData inboxData = GSON.fromJson(json, InboxData.class);
+
+    assertNull(inboxData.getPersistent());
+    assertFalse(inboxData.isPersistent());
+  }
+
+  @Test
+  void testInboxDataPersistentSetter() {
+    InboxData inboxData = new InboxData();
+    inboxData.setPersistent(true);
+
+    assertEquals(Boolean.TRUE, inboxData.getPersistent());
+    assertTrue(inboxData.isPersistent());
+  }
+
   // ==================== EmailMetadata Tests ====================
 
   @Test
